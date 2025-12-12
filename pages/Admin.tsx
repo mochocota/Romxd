@@ -112,12 +112,20 @@ export const Admin: React.FC = () => {
   const [igdbResults, setIgdbResults] = useState<any[]>([]);
   const [isIgdbLoading, setIsIgdbLoading] = useState(false);
 
+  // UPDATED RULES TO ALLOW PUBLIC VOTING/DOWNLOADS
   const rulesSnippet = `rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
+    match /games/{gameId} {
+      // Allow read for everyone
       allow read: if true;
-      allow write: if request.auth != null;
+      
+      // Allow create/delete ONLY for authenticated admin
+      allow create, delete: if request.auth != null;
+      
+      // Allow update for everyone (needed for public ratings/downloads)
+      // Note: In a stricter app, you would limit which fields can be updated.
+      allow update: if true;
     }
   }
 }`;
@@ -726,10 +734,10 @@ service cloud.firestore {
                 </div>
                 <div className="p-6 space-y-4">
                     <p className="text-zinc-700 dark:text-zinc-300 text-sm">
-                        Firebase ha bloqueado la publicación. Esto ocurre cuando las <strong>Reglas de Seguridad</strong> de Firestore no permiten escritura.
+                        Firebase ha bloqueado la operación. Esto ocurre cuando las <strong>Reglas de Seguridad</strong> de Firestore no permiten la escritura.
                     </p>
                     <p className="text-zinc-700 dark:text-zinc-300 text-sm">
-                        Ve a tu <a href="https://console.firebase.google.com/" target="_blank" rel="noreferrer" className="text-orange-600 underline font-bold">Consola de Firebase</a> &rarr; Firestore Database &rarr; Reglas, y pega lo siguiente:
+                        Para permitir que <strong>cualquier usuario vote o descargue</strong>, pero solo el Admin cree juegos, pega esto en tu consola de Firebase:
                     </p>
                     
                     <div className="relative group">

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Game, MenuLink, AdsConfig, GiscusConfig } from '../types';
 import { db } from '../services/firebase';
-import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, runTransaction } from 'firebase/firestore';
 
 interface GameContextType {
   games: Game[];
@@ -126,46 +126,71 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await deleteDoc(doc(db, "games", id));
   };
 
-  const rateGame = async (id: string, rating: number) => {
-    const game = games.find(g => g.id === id);
-    if (!game) return;
+  const rateGame = async (id: string, newVote: number) => {
+    const gameRef = doc(db, "games", id);
 
-    const currentRating = parseFloat(game.rating) || 0;
-    const currentVotes = game.voteCount !== undefined ? game.voteCount : (currentRating > 0 ? 5 : 0);
-    
-    const newVotes = currentVotes + 1;
-    const newRatingValue = ((currentRating * currentVotes) + rating) / newVotes;
-    
-    const updates = {
-        rating: newRatingValue.toFixed(1),
-        voteCount: newVotes
-    };
+    try {
+      await runTransaction(db, async (transaction) => {
+        const gameDoc = await transaction.get(gameRef);
+        if (!gameDoc.exists()) {
+          throw new Error("Game does not exist!");
+        }
 
-    await updateDoc(doc(db, "games", id), updates);
+        const data = gameDoc.data() as Game;
+        
+        // Calculate safe numbers
+        const currentRating = parseFloat(data.rating) || 0;
+        const currentVotes = data.voteCount || (currentRating > 0 ? 1 : 0);
+        
+        // New weighted average
+        const totalScore = (currentRating * currentVotes) + newVote;
+        const newTotalVotes = currentVotes + 1;
+        const newAverage = totalScore / newTotalVotes;
+
+        transaction.update(gameRef, { 
+          rating: newAverage.toFixed(1),
+          voteCount: newTotalVotes
+        });
+      });
+    } catch (e) {
+      console.error("Transaction failed: ", e);
+    }
   };
 
   const incrementDownloads = async (id: string) => {
-    const game = games.find(g => g.id === id);
-    if (!game) return;
+    const gameRef = doc(db, "games", id);
 
-    // Helper to safely parse string downloads (e.g. "1.5k" or "100")
-    // For this implementation, we try to extract the number.
-    let currentCount = 0;
-    const raw = game.downloads.toString().toLowerCase().trim();
-    
-    if (raw.endsWith('k')) {
-        currentCount = parseFloat(raw) * 1000;
-    } else if (raw.endsWith('m')) {
-        currentCount = parseFloat(raw) * 1000000;
-    } else {
-        currentCount = parseInt(raw.replace(/[^0-9]/g, '')) || 0;
+    try {
+      await runTransaction(db, async (transaction) => {
+        const gameDoc = await transaction.get(gameRef);
+        if (!gameDoc.exists()) {
+          throw new Error("Game does not exist!");
+        }
+
+        const data = gameDoc.data() as Game;
+        
+        // Helper to safely parse string downloads (e.g. "1.5k" or "100")
+        let currentCount = 0;
+        const raw = data.downloads ? data.downloads.toString().toLowerCase().trim() : "0";
+        
+        if (raw.endsWith('k')) {
+            currentCount = parseFloat(raw) * 1000;
+        } else if (raw.endsWith('m')) {
+            currentCount = parseFloat(raw) * 1000000;
+        } else {
+            currentCount = parseInt(raw.replace(/[^0-9]/g, '')) || 0;
+        }
+
+        const newCount = currentCount + 1;
+
+        // We save it back as a string to match the type definition
+        transaction.update(gameRef, { 
+          downloads: newCount.toString() 
+        });
+      });
+    } catch (e) {
+      console.error("Transaction failed: ", e);
     }
-
-    const newCount = currentCount + 1;
-
-    await updateDoc(doc(db, "games", id), {
-        downloads: newCount.toString()
-    });
   };
 
   // --- LOCAL ACTIONS ---
