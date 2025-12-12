@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useGames } from '../context/GameContext';
 import { useAuth } from '../context/AuthContext';
+import { useUI } from '../context/UIContext';
 import { Game, MenuLink } from '../types';
 import { 
     Plus, Trash2, Edit2, Save, Eye, Layout, FileText, Cpu, 
@@ -63,6 +64,7 @@ export const Admin: React.FC = () => {
   } = useGames();
   
   const { logout, user } = useAuth();
+  const { toast, dialog } = useUI();
   
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -155,6 +157,7 @@ service cloud.firestore {
   const handleCopyRules = () => {
     navigator.clipboard.writeText(rulesSnippet);
     setCopiedRules(true);
+    toast.success('Reglas copiadas al portapapeles');
     setTimeout(() => setCopiedRules(false), 2000);
   };
 
@@ -185,11 +188,14 @@ service cloud.firestore {
       window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleBackToList = () => {
-      if (view === 'editor' && confirm('¿Seguro que quieres salir? Los cambios no guardados se perderán.')) {
-        setView('list');
-        setFormData(INITIAL_FORM_STATE);
-        setSearchParams({}); 
+  const handleBackToList = async () => {
+      if (view === 'editor') {
+          const confirmed = await dialog.confirm('¿Salir sin guardar?', 'Los cambios no guardados se perderán permanentemente.');
+          if (confirmed) {
+            setView('list');
+            setFormData(INITIAL_FORM_STATE);
+            setSearchParams({}); 
+          }
       } else if (view === 'categories') {
         setView('list');
       }
@@ -201,9 +207,11 @@ service cloud.firestore {
       setSearchParams({});
   }
 
-  const handleDelete = (id: string) => {
-    if (confirm('¿Estás seguro de eliminar este juego?')) {
-      deleteGame(id);
+  const handleDelete = async (id: string) => {
+    const confirmed = await dialog.confirm('¿Eliminar videojuego?', 'Esta acción no se puede deshacer.');
+    if (confirmed) {
+      await deleteGame(id);
+      toast.success('Juego eliminado correctamente');
     }
   };
 
@@ -250,6 +258,7 @@ service cloud.firestore {
               screenshots: [...prev.screenshots, newScreenshotUrl.trim()]
           }));
           setNewScreenshotUrl('');
+          toast.success('Captura añadida');
       }
   };
 
@@ -262,7 +271,10 @@ service cloud.firestore {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title) { alert('El título es obligatorio'); return; }
+    if (!formData.title) { 
+        toast.warning('El título es obligatorio'); 
+        return; 
+    }
 
     setIsSubmitting(true);
     try {
@@ -280,9 +292,11 @@ service cloud.firestore {
 
         if (isEditing) {
             await updateGame(gameToSave);
+            toast.success('Juego actualizado correctamente');
         } else {
             const newId = Date.now().toString();
             await addGame({ ...gameToSave, id: newId });
+            toast.success('Nuevo juego publicado');
         }
         
         forceBackToList();
@@ -296,7 +310,7 @@ service cloud.firestore {
             setShowRulesModal(true);
         } else {
             const errorMessage = error.message || 'Ocurrió un error desconocido.';
-            alert(`Error al publicar: ${errorMessage}`);
+            toast.error(`Error al publicar: ${errorMessage}`);
         }
     } finally {
         setIsSubmitting(false);
@@ -336,7 +350,7 @@ service cloud.firestore {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    alert('Sitemap.xml generado.');
+    toast.success('Sitemap.xml generado y descargado');
   };
 
   // ... (IGDB handlers remain same)
@@ -353,8 +367,9 @@ service cloud.firestore {
       try {
           const results = await searchIGDBGames(igdbQuery);
           setIgdbResults(results);
+          if (results.length === 0) toast.info('No se encontraron resultados en IGDB');
       } catch (error) {
-          alert('Error buscando en IGDB.');
+          toast.error('Error buscando en IGDB. Revisa la consola.');
           console.error(error);
       } finally {
           setIsIgdbLoading(false);
@@ -376,14 +391,15 @@ service cloud.firestore {
           }));
           setShowIgdbModal(false);
           setActiveTab('media'); 
+          toast.success('Datos importados de IGDB');
       } catch (error) {
-          alert('Error obteniendo detalles del juego.');
+          toast.error('Error obteniendo detalles del juego.');
       } finally {
           setIsIgdbLoading(false);
       }
   };
 
-  const handleAddItem = (e: React.FormEvent) => {
+  const handleAddItem = async (e: React.FormEvent) => {
       e.preventDefault();
       
       if (managerTab === 'menu') {
@@ -391,8 +407,10 @@ service cloud.firestore {
               if (editingMenuId) {
                   updateMenuLink({ id: editingMenuId, label: menuLabel.trim(), url: menuUrl.trim() });
                   setEditingMenuId(null);
+                  toast.success('Enlace de menú actualizado');
               } else {
                   addMenuLink({ id: Date.now().toString(), label: menuLabel.trim(), url: menuUrl.trim() });
+                  toast.success('Enlace añadido al menú');
               }
               setMenuLabel('');
               setMenuUrl('');
@@ -402,19 +420,25 @@ service cloud.firestore {
       
       if (managerTab === 'ads') {
           updateAdsConfig({ topAdCode: topAdInput, bottomAdCode: bottomAdInput, globalHeadScript: headScriptInput, globalBodyScript: bodyScriptInput });
-          alert('Configuración guardada.');
+          toast.success('Configuración de publicidad guardada');
           return;
       }
 
        if (managerTab === 'comments') {
         updateGiscusConfig({ repo: giscusRepo, repoId: giscusRepoId, category: giscusCategory, categoryId: giscusCategoryId, mapping: 'pathname', enabled: giscusEnabled });
-        alert('Configuración de Giscus guardada.');
+        toast.success('Configuración de Giscus guardada');
         return;
     }
 
       if (newItemName.trim()) {
-          if (managerTab === 'platforms') addPlatform(newItemName);
-          else addTag(newItemName);
+          if (managerTab === 'platforms') {
+              addPlatform(newItemName);
+              toast.success(`Plataforma "${newItemName}" añadida`);
+          }
+          else {
+              addTag(newItemName);
+              toast.success(`Etiqueta "${newItemName}" añadida`);
+          }
           setNewItemName('');
       }
   };
@@ -424,12 +448,14 @@ service cloud.firestore {
       setMenuUrl(link.url);
       setEditingMenuId(link.id);
   };
-  const handleDeleteMenuLink = (id: string) => {
-      if (confirm('¿Borrar enlace?')) {
+  const handleDeleteMenuLink = async (id: string) => {
+      const confirmed = await dialog.confirm('¿Borrar enlace?', 'Esta acción eliminará el enlace del menú.');
+      if (confirmed) {
           deleteMenuLink(id);
           if (editingMenuId === id) {
              setMenuLabel(''); setMenuUrl(''); setEditingMenuId(null);
           }
+          toast.success('Enlace eliminado');
       }
   }
   const handleQuickFill = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -439,10 +465,12 @@ service cloud.firestore {
       setMenuUrl(`/?search=${encodeURIComponent(value)}`);
       e.target.value = "";
   };
-  const handleDeleteItem = (item: string) => {
-      if (confirm(`¿Borrar "${item}"?`)) {
+  const handleDeleteItem = async (item: string) => {
+      const confirmed = await dialog.confirm(`¿Borrar "${item}"?`, 'Esto lo eliminará de la lista de sugerencias.');
+      if (confirmed) {
           if (managerTab === 'platforms') deletePlatform(item);
           else deleteTag(item);
+          toast.info('Elemento eliminado');
       }
   }
 
@@ -455,8 +483,9 @@ service cloud.firestore {
       setFormData(prev => ({ ...prev, fullDescription: newText }));
   };
 
-  const handleInsertYoutube = () => {
-      const url = prompt('Introduce la URL del video de YouTube:');
+  const handleInsertYoutube = async () => {
+      const url = await dialog.prompt('Insertar YouTube', 'Introduce la URL del video de YouTube:', 'https://www.youtube.com/watch?v=...');
+      
       if (!url) return;
       const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
       const match = url.match(regExp);
@@ -464,6 +493,9 @@ service cloud.firestore {
           const videoId = match[2];
           const embedCode = `\n<div class="aspect-video w-full my-6 overflow-hidden rounded-lg shadow-md"><iframe width="100%" height="100%" src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allowfullscreen></iframe></div>\n`;
           insertMarkdown(embedCode);
+          toast.success('Video de YouTube insertado');
+      } else {
+          toast.error('URL de YouTube inválida');
       }
   };
 
