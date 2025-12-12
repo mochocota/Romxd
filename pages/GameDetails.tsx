@@ -9,7 +9,7 @@ import { Comments } from '../components/Comments';
 
 export const GameDetails: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
-  const { games, rateGame } = useGames();
+  const { games, rateGame, incrementDownloads } = useGames();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [userRating, setUserRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -27,10 +27,19 @@ export const GameDetails: React.FC = () => {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    // Reset local rating state when changing games
-    setHasRated(false);
-    setUserRating(0);
-  }, [slug]);
+    
+    // Check if user has already rated this game in LocalStorage
+    if (game?.id) {
+        const savedRating = localStorage.getItem(`romxd_rating_${game.id}`);
+        if (savedRating) {
+            setHasRated(true);
+            setUserRating(parseInt(savedRating));
+        } else {
+            setHasRated(false);
+            setUserRating(0);
+        }
+    }
+  }, [slug, game?.id]);
 
   // Close modal with Escape key
   useEffect(() => {
@@ -43,9 +52,20 @@ export const GameDetails: React.FC = () => {
 
   const handleRate = (rating: number) => {
       if (hasRated || !game) return;
+      
+      // Save to Firebase
       rateGame(game.id, rating);
+      
+      // Save to Local State & Storage
       setUserRating(rating);
       setHasRated(true);
+      localStorage.setItem(`romxd_rating_${game.id}`, rating.toString());
+  };
+
+  const handleDownloadClick = () => {
+      if (game) {
+          incrementDownloads(game.id);
+      }
   };
 
   if (!game) {
@@ -260,6 +280,7 @@ export const GameDetails: React.FC = () => {
                 {isLinkValid ? (
                     <Link 
                         to={downloadDestination}
+                        onClick={handleDownloadClick}
                         className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-4 px-6 rounded shadow-lg flex items-center justify-center gap-3 transition-transform hover:scale-[1.02] uppercase text-lg"
                     >
                         <Download size={24} />

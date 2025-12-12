@@ -14,6 +14,7 @@ interface GameContextType {
   updateGame: (game: Game) => Promise<void>;
   deleteGame: (id: string) => Promise<void>;
   rateGame: (id: string, rating: number) => Promise<void>;
+  incrementDownloads: (id: string) => Promise<void>;
   addTag: (tag: string) => void;
   deleteTag: (tag: string) => void;
   addPlatform: (platform: string) => void;
@@ -79,7 +80,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // --- LOCAL STORAGE FOR SETTINGS (Tags, Configs) ---
-  // To keep "posts" in firebase but simplify config management as requested
   const [tags, setTags] = useState<string[]>(() => {
     const saved = localStorage.getItem('romxd_tags');
     return saved ? JSON.parse(saved) : DEFAULT_TAGS;
@@ -115,7 +115,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // --- FIRESTORE ACTIONS ---
 
   const addGame = async (game: Game) => {
-    // Usamos setDoc con el ID que generamos en el cliente para mantener consistencia
     await setDoc(doc(db, "games", game.id), game);
   };
 
@@ -145,6 +144,30 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await updateDoc(doc(db, "games", id), updates);
   };
 
+  const incrementDownloads = async (id: string) => {
+    const game = games.find(g => g.id === id);
+    if (!game) return;
+
+    // Helper to safely parse string downloads (e.g. "1.5k" or "100")
+    // For this implementation, we try to extract the number.
+    let currentCount = 0;
+    const raw = game.downloads.toString().toLowerCase().trim();
+    
+    if (raw.endsWith('k')) {
+        currentCount = parseFloat(raw) * 1000;
+    } else if (raw.endsWith('m')) {
+        currentCount = parseFloat(raw) * 1000000;
+    } else {
+        currentCount = parseInt(raw.replace(/[^0-9]/g, '')) || 0;
+    }
+
+    const newCount = currentCount + 1;
+
+    await updateDoc(doc(db, "games", id), {
+        downloads: newCount.toString()
+    });
+  };
+
   // --- LOCAL ACTIONS ---
   const addTag = (tag: string) => {
     if (!tag.trim()) return;
@@ -172,7 +195,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <GameContext.Provider value={{ 
       games, tags, platforms, menuLinks, adsConfig, giscusConfig, loading,
-      addGame, updateGame, deleteGame, rateGame,
+      addGame, updateGame, deleteGame, rateGame, incrementDownloads,
       addTag, deleteTag,
       addPlatform, deletePlatform,
       addMenuLink, updateMenuLink, deleteMenuLink,
