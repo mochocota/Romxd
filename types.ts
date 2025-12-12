@@ -21,15 +21,6 @@ export interface AdsConfig {
   globalBodyScript: string; // Script injection for <body>
 }
 
-export interface GiscusConfig {
-  repo: string;
-  repoId: string;
-  category: string;
-  categoryId: string;
-  mapping: string; // e.g., 'pathname' or 'url'
-  enabled: boolean;
-}
-
 export interface Comment {
   id: string;
   gameId: string;

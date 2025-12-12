@@ -56,11 +56,11 @@ const slugify = (text: string) => {
 
 export const Admin: React.FC = () => {
   const { 
-      games, tags, platforms, menuLinks, adsConfig, giscusConfig,
+      games, tags, platforms, menuLinks, adsConfig,
       addGame, updateGame, deleteGame, 
       addTag, deleteTag, addPlatform, deletePlatform,
       addMenuLink, updateMenuLink, deleteMenuLink,
-      updateAdsConfig, updateGiscusConfig
+      updateAdsConfig
   } = useGames();
   
   const { logout, user } = useAuth();
@@ -82,7 +82,7 @@ export const Admin: React.FC = () => {
   const [copiedRules, setCopiedRules] = useState(false);
   
   // Manager Local State
-  const [managerTab, setManagerTab] = useState<'platforms' | 'tags' | 'menu' | 'ads' | 'comments'>('platforms');
+  const [managerTab, setManagerTab] = useState<'platforms' | 'tags' | 'menu' | 'ads'>('platforms');
   const [newItemName, setNewItemName] = useState('');
   
   // Menu specific state
@@ -95,13 +95,6 @@ export const Admin: React.FC = () => {
   const [bottomAdInput, setBottomAdInput] = useState('');
   const [headScriptInput, setHeadScriptInput] = useState('');
   const [bodyScriptInput, setBodyScriptInput] = useState('');
-  
-  // Giscus specific state
-  const [giscusRepo, setGiscusRepo] = useState('');
-  const [giscusRepoId, setGiscusRepoId] = useState('');
-  const [giscusCategory, setGiscusCategory] = useState('');
-  const [giscusCategoryId, setGiscusCategoryId] = useState('');
-  const [giscusEnabled, setGiscusEnabled] = useState(false);
 
   // Screenshot Local State
   const [newScreenshotUrl, setNewScreenshotUrl] = useState('');
@@ -158,15 +151,8 @@ service cloud.firestore {
             setHeadScriptInput(adsConfig.globalHeadScript || '');
             setBodyScriptInput(adsConfig.globalBodyScript || '');
           }
-          if (managerTab === 'comments') {
-            setGiscusRepo(giscusConfig.repo || '');
-            setGiscusRepoId(giscusConfig.repoId || '');
-            setGiscusCategory(giscusConfig.category || '');
-            setGiscusCategoryId(giscusConfig.categoryId || '');
-            setGiscusEnabled(giscusConfig.enabled);
-          }
       }
-  }, [view, managerTab, adsConfig, giscusConfig]);
+  }, [view, managerTab, adsConfig]);
 
   // --- Handlers ---
 
@@ -440,12 +426,6 @@ service cloud.firestore {
           return;
       }
 
-       if (managerTab === 'comments') {
-        updateGiscusConfig({ repo: giscusRepo, repoId: giscusRepoId, category: giscusCategory, categoryId: giscusCategoryId, mapping: 'pathname', enabled: giscusEnabled });
-        toast.success('Configuración de Giscus guardada');
-        return;
-    }
-
       if (newItemName.trim()) {
           if (managerTab === 'platforms') {
               addPlatform(newItemName);
@@ -537,7 +517,6 @@ service cloud.firestore {
                         <button onClick={() => setManagerTab('tags')} className={`pb-2 px-1 font-bold ${managerTab === 'tags' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-zinc-500'}`}>Etiquetas</button>
                         <button onClick={() => setManagerTab('menu')} className={`pb-2 px-1 font-bold ${managerTab === 'menu' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-zinc-500'}`}>Menú</button>
                         <button onClick={() => setManagerTab('ads')} className={`pb-2 px-1 font-bold ${managerTab === 'ads' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-zinc-500'}`}>Publicidad</button>
-                        <button onClick={() => setManagerTab('comments')} className={`pb-2 px-1 font-bold ${managerTab === 'comments' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-zinc-500'}`}>Comentarios</button>
                     </div>
 
                     {managerTab === 'ads' ? (
@@ -555,28 +534,6 @@ service cloud.firestore {
                                 </div>
                             </div>
                             <button onClick={handleAddItem} className="mt-8 bg-orange-600 text-white px-8 py-3 rounded font-bold shadow-lg flex items-center gap-2 ml-auto"><Save size={18} /> Guardar Configuración</button>
-                        </div>
-                    ) : managerTab === 'comments' ? (
-                        <div className="animate-fadeIn max-w-2xl">
-                             <div className="space-y-4">
-                                <div className="p-4 bg-gray-50 dark:bg-[#1a1a1a] rounded border dark:border-[#333] mb-4">
-                                    <p className="text-sm dark:text-zinc-300">
-                                        Ahora estás utilizando el sistema de comentarios interno (sin login). 
-                                        La configuración de Giscus a continuación se mantendrá guardada por si decides volver a usarla en el futuro.
-                                    </p>
-                                </div>
-                                
-                                <div className="flex items-center gap-2 mb-4"><input type="checkbox" id="giscusEnabled" checked={giscusEnabled} onChange={(e) => setGiscusEnabled(e.target.checked)} className="w-5 h-5 text-orange-600 rounded" /><label htmlFor="giscusEnabled" className="text-sm font-bold dark:text-zinc-300">Habilitar Giscus (Requiere GitHub)</label></div>
-                                <div className={`${giscusEnabled ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
-                                    <div><label className="block text-xs uppercase font-bold mb-1 dark:text-zinc-500">Repositorio</label><input type="text" value={giscusRepo} onChange={(e) => setGiscusRepo(e.target.value)} className="w-full bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] px-4 py-2 rounded dark:text-white" /></div>
-                                    <div><label className="block text-xs uppercase font-bold mb-1 dark:text-zinc-500">Repo ID</label><input type="text" value={giscusRepoId} onChange={(e) => setGiscusRepoId(e.target.value)} className="w-full bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] px-4 py-2 rounded dark:text-white" /></div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="block text-xs uppercase font-bold mb-1 dark:text-zinc-500">Category Name</label><input type="text" value={giscusCategory} onChange={(e) => setGiscusCategory(e.target.value)} className="w-full bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] px-4 py-2 rounded dark:text-white" /></div>
-                                        <div><label className="block text-xs uppercase font-bold mb-1 dark:text-zinc-500">Category ID</label><input type="text" value={giscusCategoryId} onChange={(e) => setGiscusCategoryId(e.target.value)} className="w-full bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] px-4 py-2 rounded dark:text-white" /></div>
-                                    </div>
-                                </div>
-                             </div>
-                             <button onClick={handleAddItem} className="mt-8 bg-orange-600 text-white px-8 py-3 rounded font-bold shadow-lg flex items-center gap-2 ml-auto"><Save size={18} /> Guardar Configuración</button>
                         </div>
                     ) : managerTab === 'menu' ? (
                         <>

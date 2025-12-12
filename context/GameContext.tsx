@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Game, MenuLink, AdsConfig, GiscusConfig } from '../types';
+import { Game, MenuLink, AdsConfig } from '../types';
 import { db } from '../services/firebase';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, runTransaction } from 'firebase/firestore';
 
@@ -9,7 +9,6 @@ interface GameContextType {
   platforms: string[];
   menuLinks: MenuLink[];
   adsConfig: AdsConfig;
-  giscusConfig: GiscusConfig;
   addGame: (game: Game) => Promise<void>;
   updateGame: (game: Game) => Promise<void>;
   deleteGame: (id: string) => Promise<void>;
@@ -24,7 +23,6 @@ interface GameContextType {
   updateMenuLink: (link: MenuLink) => void;
   deleteMenuLink: (id: string) => void;
   updateAdsConfig: (config: AdsConfig) => void;
-  updateGiscusConfig: (config: GiscusConfig) => void;
   loading: boolean;
 }
 
@@ -50,15 +48,6 @@ const DEFAULT_ADS_CONFIG: AdsConfig = {
   bottomAdCode: '',
   globalHeadScript: '',
   globalBodyScript: ''
-};
-
-const DEFAULT_GISCUS_CONFIG: GiscusConfig = {
-  repo: '',
-  repoId: '',
-  category: '', 
-  categoryId: '', 
-  mapping: 'pathname',
-  enabled: false // Default to false now that we use internal comments
 };
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -101,17 +90,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return saved ? JSON.parse(saved) : DEFAULT_ADS_CONFIG;
   });
 
-  const [giscusConfig, setGiscusConfig] = useState<GiscusConfig>(() => {
-      const saved = localStorage.getItem('romxd_giscus_config');
-      return saved ? JSON.parse(saved) : DEFAULT_GISCUS_CONFIG;
-  });
-
   // Persist Local Settings
   useEffect(() => localStorage.setItem('romxd_tags', JSON.stringify(tags)), [tags]);
   useEffect(() => localStorage.setItem('romxd_platforms', JSON.stringify(platforms)), [platforms]);
   useEffect(() => localStorage.setItem('romxd_menu_links', JSON.stringify(menuLinks)), [menuLinks]);
   useEffect(() => localStorage.setItem('romxd_ads_config', JSON.stringify(adsConfig)), [adsConfig]);
-  useEffect(() => localStorage.setItem('romxd_giscus_config', JSON.stringify(giscusConfig)), [giscusConfig]);
 
   // --- FIRESTORE ACTIONS ---
 
@@ -233,16 +216,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const deleteMenuLink = (id: string) => setMenuLinks(prev => prev.filter(l => l.id !== id));
   
   const updateAdsConfig = (c: AdsConfig) => setAdsConfig(c);
-  const updateGiscusConfig = (c: GiscusConfig) => setGiscusConfig(c);
 
   return (
     <GameContext.Provider value={{ 
-      games, tags, platforms, menuLinks, adsConfig, giscusConfig, loading,
+      games, tags, platforms, menuLinks, adsConfig, loading,
       addGame, updateGame, deleteGame, rateGame, incrementDownloads, addComment,
       addTag, deleteTag,
       addPlatform, deletePlatform,
       addMenuLink, updateMenuLink, deleteMenuLink,
-      updateAdsConfig, updateGiscusConfig
+      updateAdsConfig
     }}>
       {children}
     </GameContext.Provider>

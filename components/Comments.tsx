@@ -84,7 +84,7 @@ export const Comments: React.FC<CommentsProps> = ({ gameId }) => {
       <div className="flex items-center gap-2 mb-6 border-b border-gray-200 dark:border-[#444] pb-2">
         <MessageSquare className="text-orange-600 dark:text-orange-400" size={24} />
         <h3 className="text-xl font-bold text-zinc-800 dark:text-white">
-            Comentarios <span className="text-sm font-normal text-zinc-500">({comments.length})</span>
+            Comentarios de la Comunidad <span className="text-sm font-normal text-zinc-500">({comments.length})</span>
         </h3>
       </div>
       
