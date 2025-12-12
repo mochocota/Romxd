@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, Menu, Sun, Moon, PlusCircle, X } from 'lucide-react';
+import { Search, Menu, Sun, Moon, User, X } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useGames } from '../context/GameContext';
 
@@ -106,8 +106,8 @@ export const Navbar: React.FC = () => {
                     })}
                 </nav>
 
-                <Link to="/admin" className="p-2 text-zinc-600 dark:text-zinc-300 hover:text-orange-600 dark:hover:text-white transition-colors" title="Manage Games">
-                    <PlusCircle size={24} />
+                <Link to="/admin" className="p-2 text-zinc-600 dark:text-zinc-300 hover:text-orange-600 dark:hover:text-white transition-colors" title="Login / Admin">
+                    <User size={24} />
                 </Link>
                 
                 {/* MOBILE MENU BUTTON (Visible on mobile, Hidden on MD+) */}
