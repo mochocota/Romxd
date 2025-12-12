@@ -1,13 +1,13 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { GameCard } from '../components/GameCard';
-import { SearchX, ChevronLeft, ChevronRight, Star } from 'lucide-react';
+import { SearchX, ChevronLeft, ChevronRight, Star, Loader2 } from 'lucide-react';
 import { useGames } from '../context/GameContext';
 import { useSearchParams, Link, useLocation } from 'react-router-dom';
 import { AdUnit } from '../components/AdUnit';
 import { SEO } from '../components/SEO';
 
 export const Home: React.FC = () => {
-  const { games, adsConfig } = useGames();
+  const { games, adsConfig, loading } = useGames();
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('search') || '';
   const sliderRef = useRef<HTMLDivElement>(null);
@@ -79,6 +79,14 @@ export const Home: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [showHero, heroGames.length, isPaused]);
+
+  if (loading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-[#333]">
+            <Loader2 className="animate-spin text-orange-600" size={48} />
+        </div>
+      );
+  }
 
   return (
     <div className="min-h-screen pb-12 w-full overflow-x-hidden">

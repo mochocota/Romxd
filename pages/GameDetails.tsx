@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Download, Share2, ArrowLeft, Database, Info, Monitor, Home, X, Edit2, Star } from 'lucide-react';
+import { Download, Share2, ArrowLeft, Database, Info, Monitor, Home, X, Edit2, Star, Loader2 } from 'lucide-react';
 import { useGames } from '../context/GameContext';
 import { GameCard } from '../components/GameCard';
 import { parse } from 'marked';
@@ -9,7 +9,7 @@ import { Comments } from '../components/Comments';
 
 export const GameDetails: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
-  const { games, rateGame, incrementDownloads } = useGames();
+  const { games, rateGame, incrementDownloads, loading } = useGames();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [userRating, setUserRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -68,6 +68,16 @@ export const GameDetails: React.FC = () => {
       }
   };
 
+  // 1. LOADING STATE: Show spinner while fetching data
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-[#333]">
+        <Loader2 className="animate-spin text-orange-600" size={48} />
+      </div>
+    );
+  }
+
+  // 2. 404 STATE: Only show if loading is done AND game is missing
   if (!game) {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center text-zinc-800 dark:text-white gap-4 bg-gray-100 dark:bg-[#333]">
