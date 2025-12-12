@@ -1,9 +1,11 @@
 import { GoogleGenAI, Chat } from "@google/genai";
 
 // Initialize Gemini Client
-// The API key must be obtained exclusively from the environment variable process.env.API_KEY
-// Note: Ensure VITE_GEMINI_API_KEY is set in your .env file
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// IMPORTANT: In Vercel, ensuring we read from import.meta.env is more reliable for Vite apps
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || process.env.API_KEY;
+
+// Note: Ensure VITE_GEMINI_API_KEY is set in your .env file locally AND in Vercel Environment Variables
+const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 export const createGameAssistantChat = (): Chat => {
   return ai.chats.create({
@@ -29,8 +31,8 @@ export const translateToSpanish = async (text: string): Promise<string> => {
   if (!text) return '';
   
   // Debug check for API Key
-  if (!process.env.API_KEY) {
-    console.warn('RomXD: API_KEY is missing. Translation skipped.');
+  if (!API_KEY) {
+    console.warn('RomXD: API_KEY is missing. Translation skipped. Please add VITE_GEMINI_API_KEY to Vercel Environment Variables.');
     return text;
   }
 
@@ -61,7 +63,7 @@ export const translateToSpanish = async (text: string): Promise<string> => {
 export const translateKeywords = async (text: string): Promise<string> => {
   if (!text) return '';
   
-  if (!process.env.API_KEY) return text;
+  if (!API_KEY) return text;
 
   try {
     const response = await ai.models.generateContent({
