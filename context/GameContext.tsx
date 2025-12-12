@@ -15,6 +15,7 @@ interface GameContextType {
   deleteGame: (id: string) => Promise<void>;
   rateGame: (id: string, rating: number) => Promise<void>;
   incrementDownloads: (id: string) => Promise<void>;
+  addComment: (gameId: string, author: string, content: string) => Promise<void>;
   addTag: (tag: string) => void;
   deleteTag: (tag: string) => void;
   addPlatform: (platform: string) => void;
@@ -51,14 +52,13 @@ const DEFAULT_ADS_CONFIG: AdsConfig = {
   globalBodyScript: ''
 };
 
-// Updated with user provided Repo Data
 const DEFAULT_GISCUS_CONFIG: GiscusConfig = {
-  repo: 'mochocota/Romxd',
-  repoId: 'R_kgDOQnvZpA',
-  category: '', // User needs to fill this in Admin
-  categoryId: '', // User needs to fill this in Admin
+  repo: '',
+  repoId: '',
+  category: '', 
+  categoryId: '', 
   mapping: 'pathname',
-  enabled: true
+  enabled: false // Default to false now that we use internal comments
 };
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -103,15 +103,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [giscusConfig, setGiscusConfig] = useState<GiscusConfig>(() => {
       const saved = localStorage.getItem('romxd_giscus_config');
-      // If local storage has empty repo but we now have a default, use default
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (!parsed.repo && DEFAULT_GISCUS_CONFIG.repo) {
-            return { ...parsed, repo: DEFAULT_GISCUS_CONFIG.repo, repoId: DEFAULT_GISCUS_CONFIG.repoId, enabled: true };
-        }
-        return parsed;
-      }
-      return DEFAULT_GISCUS_CONFIG;
+      return saved ? JSON.parse(saved) : DEFAULT_GISCUS_CONFIG;
   });
 
   // Persist Local Settings
@@ -146,12 +138,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         const data = gameDoc.data() as Game;
-        
-        // Calculate safe numbers
         const currentRating = parseFloat(data.rating) || 0;
         const currentVotes = data.voteCount || (currentRating > 0 ? 1 : 0);
         
-        // New weighted average
         const totalScore = (currentRating * currentVotes) + newVote;
         const newTotalVotes = currentVotes + 1;
         const newAverage = totalScore / newTotalVotes;
@@ -175,13 +164,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!gameDoc.exists()) {
           throw new Error("Game does not exist!");
         }
-
         const data = gameDoc.data() as Game;
-        
-        // Helper to safely parse string downloads (e.g. "1.5k" or "100")
         let currentCount = 0;
         const raw = data.downloads ? data.downloads.toString().toLowerCase().trim() : "0";
-        
         if (raw.endsWith('k')) {
             currentCount = parseFloat(raw) * 1000;
         } else if (raw.endsWith('m')) {
@@ -189,16 +174,40 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
             currentCount = parseInt(raw.replace(/[^0-9]/g, '')) || 0;
         }
-
         const newCount = currentCount + 1;
-
-        // We save it back as a string to match the type definition
-        transaction.update(gameRef, { 
-          downloads: newCount.toString() 
-        });
+        transaction.update(gameRef, { downloads: newCount.toString() });
       });
     } catch (e) {
       console.error("Transaction failed: ", e);
+    }
+  };
+
+  const addComment = async (gameId: string, author: string, content: string) => {
+    const gameRef = doc(db, "games", gameId);
+    const commentsCollectionRef = collection(db, "games", gameId, "comments");
+    const newCommentRef = doc(commentsCollectionRef); // Create a new doc reference with Auto ID
+
+    try {
+        await runTransaction(db, async (transaction) => {
+            const gameDoc = await transaction.get(gameRef);
+            if (!gameDoc.exists()) throw new Error("Game not found");
+
+            // 1. Create the comment in subcollection
+            transaction.set(newCommentRef, {
+                id: newCommentRef.id,
+                gameId,
+                author,
+                content,
+                createdAt: Date.now()
+            });
+
+            // 2. Increment the main comment counter on the game document
+            const currentComments = gameDoc.data().comments || 0;
+            transaction.update(gameRef, { comments: currentComments + 1 });
+        });
+    } catch (e) {
+        console.error("Error adding comment:", e);
+        throw e;
     }
   };
 
@@ -229,7 +238,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <GameContext.Provider value={{ 
       games, tags, platforms, menuLinks, adsConfig, giscusConfig, loading,
-      addGame, updateGame, deleteGame, rateGame, incrementDownloads,
+      addGame, updateGame, deleteGame, rateGame, incrementDownloads, addComment,
       addTag, deleteTag,
       addPlatform, deletePlatform,
       addMenuLink, updateMenuLink, deleteMenuLink,

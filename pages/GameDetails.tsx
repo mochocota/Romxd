@@ -341,8 +341,8 @@ export const GameDetails: React.FC = () => {
                 </div>
             </div>
 
-            {/* Comments Section (Giscus) */}
-            <Comments />
+            {/* Comments Section (Internal Firebase System) */}
+            <Comments gameId={game.id} />
 
           </div>
 

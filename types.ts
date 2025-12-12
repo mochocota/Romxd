@@ -30,6 +30,14 @@ export interface GiscusConfig {
   enabled: boolean;
 }
 
+export interface Comment {
+  id: string;
+  gameId: string;
+  author: string;
+  content: string;
+  createdAt: number; // Timestamp
+}
+
 export interface Game {
   id: string;
   title: string;

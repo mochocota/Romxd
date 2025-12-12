@@ -112,20 +112,28 @@ export const Admin: React.FC = () => {
   const [igdbResults, setIgdbResults] = useState<any[]>([]);
   const [isIgdbLoading, setIsIgdbLoading] = useState(false);
 
-  // UPDATED RULES TO ALLOW PUBLIC VOTING/DOWNLOADS
+  // UPDATED RULES TO ALLOW PUBLIC VOTING/DOWNLOADS/COMMENTS
   const rulesSnippet = `rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Reglas para Juegos
     match /games/{gameId} {
-      // Allow read for everyone
+      // Todos pueden leer los juegos
       allow read: if true;
       
-      // Allow create/delete ONLY for authenticated admin
+      // Solo el Admin autenticado puede crear o borrar juegos
       allow create, delete: if request.auth != null;
       
-      // Allow update for everyone (needed for public ratings/downloads)
-      // Note: In a stricter app, you would limit which fields can be updated.
+      // Todos pueden actualizar (para votos y contador de descargas/comentarios)
       allow update: if true;
+
+      // Subcolección de Comentarios
+      match /comments/{commentId} {
+        // Todos pueden leer y crear comentarios
+        allow read, create: if true;
+        // Solo el Admin puede borrar o editar comentarios
+        allow update, delete: if request.auth != null;
+      }
     }
   }
 }`;
@@ -551,15 +559,24 @@ service cloud.firestore {
                     ) : managerTab === 'comments' ? (
                         <div className="animate-fadeIn max-w-2xl">
                              <div className="space-y-4">
-                                <div className="flex items-center gap-2 mb-4"><input type="checkbox" id="giscusEnabled" checked={giscusEnabled} onChange={(e) => setGiscusEnabled(e.target.checked)} className="w-5 h-5 text-orange-600 rounded" /><label htmlFor="giscusEnabled" className="text-sm font-bold dark:text-zinc-300">Habilitar Comentarios</label></div>
-                                <div><label className="block text-xs uppercase font-bold mb-1 dark:text-zinc-500">Repositorio</label><input type="text" value={giscusRepo} onChange={(e) => setGiscusRepo(e.target.value)} className="w-full bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] px-4 py-2 rounded dark:text-white" /></div>
-                                <div><label className="block text-xs uppercase font-bold mb-1 dark:text-zinc-500">Repo ID</label><input type="text" value={giscusRepoId} onChange={(e) => setGiscusRepoId(e.target.value)} className="w-full bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] px-4 py-2 rounded dark:text-white" /></div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div><label className="block text-xs uppercase font-bold mb-1 dark:text-zinc-500">Category Name</label><input type="text" value={giscusCategory} onChange={(e) => setGiscusCategory(e.target.value)} className="w-full bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] px-4 py-2 rounded dark:text-white" /></div>
-                                    <div><label className="block text-xs uppercase font-bold mb-1 dark:text-zinc-500">Category ID</label><input type="text" value={giscusCategoryId} onChange={(e) => setGiscusCategoryId(e.target.value)} className="w-full bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] px-4 py-2 rounded dark:text-white" /></div>
+                                <div className="p-4 bg-gray-50 dark:bg-[#1a1a1a] rounded border dark:border-[#333] mb-4">
+                                    <p className="text-sm dark:text-zinc-300">
+                                        Ahora estás utilizando el sistema de comentarios interno (sin login). 
+                                        La configuración de Giscus a continuación se mantendrá guardada por si decides volver a usarla en el futuro.
+                                    </p>
+                                </div>
+                                
+                                <div className="flex items-center gap-2 mb-4"><input type="checkbox" id="giscusEnabled" checked={giscusEnabled} onChange={(e) => setGiscusEnabled(e.target.checked)} className="w-5 h-5 text-orange-600 rounded" /><label htmlFor="giscusEnabled" className="text-sm font-bold dark:text-zinc-300">Habilitar Giscus (Requiere GitHub)</label></div>
+                                <div className={`${giscusEnabled ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+                                    <div><label className="block text-xs uppercase font-bold mb-1 dark:text-zinc-500">Repositorio</label><input type="text" value={giscusRepo} onChange={(e) => setGiscusRepo(e.target.value)} className="w-full bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] px-4 py-2 rounded dark:text-white" /></div>
+                                    <div><label className="block text-xs uppercase font-bold mb-1 dark:text-zinc-500">Repo ID</label><input type="text" value={giscusRepoId} onChange={(e) => setGiscusRepoId(e.target.value)} className="w-full bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] px-4 py-2 rounded dark:text-white" /></div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><label className="block text-xs uppercase font-bold mb-1 dark:text-zinc-500">Category Name</label><input type="text" value={giscusCategory} onChange={(e) => setGiscusCategory(e.target.value)} className="w-full bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] px-4 py-2 rounded dark:text-white" /></div>
+                                        <div><label className="block text-xs uppercase font-bold mb-1 dark:text-zinc-500">Category ID</label><input type="text" value={giscusCategoryId} onChange={(e) => setGiscusCategoryId(e.target.value)} className="w-full bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] px-4 py-2 rounded dark:text-white" /></div>
+                                    </div>
                                 </div>
                              </div>
-                             <button onClick={handleAddItem} className="mt-8 bg-orange-600 text-white px-8 py-3 rounded font-bold shadow-lg flex items-center gap-2 ml-auto"><Save size={18} /> Guardar Giscus</button>
+                             <button onClick={handleAddItem} className="mt-8 bg-orange-600 text-white px-8 py-3 rounded font-bold shadow-lg flex items-center gap-2 ml-auto"><Save size={18} /> Guardar Configuración</button>
                         </div>
                     ) : managerTab === 'menu' ? (
                         <>
@@ -734,10 +751,10 @@ service cloud.firestore {
                 </div>
                 <div className="p-6 space-y-4">
                     <p className="text-zinc-700 dark:text-zinc-300 text-sm">
-                        Firebase ha bloqueado la operación. Esto ocurre cuando las <strong>Reglas de Seguridad</strong> de Firestore no permiten la escritura.
+                        Firebase ha bloqueado la operación. Para habilitar los <strong>comentarios públicos</strong> y los votos, necesitas actualizar tus reglas de seguridad.
                     </p>
                     <p className="text-zinc-700 dark:text-zinc-300 text-sm">
-                        Para permitir que <strong>cualquier usuario vote o descargue</strong>, pero solo el Admin cree juegos, pega esto en tu consola de Firebase:
+                        Copia y pega este código en la consola de Firebase (Firestore Database > Rules):
                     </p>
                     
                     <div className="relative group">
