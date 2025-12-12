@@ -289,7 +289,10 @@ service cloud.firestore {
     } catch (error: any) {
         console.error("Error saving game:", error);
         
-        if (error.code === 'permission-denied') {
+        const errString = error.toString().toLowerCase();
+        
+        // Comprehensive check for permission errors
+        if (error.code === 'permission-denied' || errString.includes('permission') || errString.includes('insufficient')) {
             setShowRulesModal(true);
         } else {
             const errorMessage = error.message || 'Ocurrió un error desconocido.';
