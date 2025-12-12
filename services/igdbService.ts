@@ -1,5 +1,5 @@
 import { Game } from '../types';
-import { translateToSpanish } from './geminiService';
+import { translateToSpanish, translateKeywords } from './geminiService';
 
 const CLIENT_ID = 'enys9zuc31puz2hj3k5enkviog5fvw';
 const CLIENT_SECRET = 'qnd0id590kvr40gny1qz42k60a1ig6';
@@ -29,6 +29,7 @@ interface IGDBGameResult {
 
 interface IGDBGameDetail extends IGDBGameResult {
   summary?: string;
+  storyline?: string;
   screenshots?: IGDBImage[];
   genres?: { name: string }[];
   platforms?: { name: string }[];
@@ -80,7 +81,7 @@ export const getIGDBGameDetails = async (gameId: number): Promise<Partial<Game>>
   const token = await getAccessToken();
 
   const queryBody = `
-    fields name, summary, first_release_date, 
+    fields name, summary, storyline, first_release_date, 
     cover.image_id, 
     screenshots.image_id, 
     genres.name, 
@@ -105,7 +106,6 @@ export const getIGDBGameDetails = async (gameId: number): Promise<Partial<Game>>
   if (!igdbGame) throw new Error('Game not found');
 
   // Map IGDB data to our App Game format
-  // Changed size default to '1080p' for better quality covers
   const getImageUrl = (imageId: string, size: 'cover_big' | 'screenshot_huge' | '1080p' | '720p' = '1080p') => 
     `https://images.igdb.com/igdb/image/upload/t_${size}/${imageId}.jpg`;
 
@@ -115,24 +115,31 @@ export const getIGDBGameDetails = async (gameId: number): Promise<Partial<Game>>
     ? new Date(igdbGame.first_release_date * 1000).toISOString().split('T')[0] 
     : '';
 
-  // Translate Summary
-  let summary = igdbGame.summary || '';
-  if (summary) {
-    summary = await translateToSpanish(summary);
-  }
+  // Prepare text for translation
+  // Combine summary and storyline for a richer description
+  const rawDescription = [igdbGame.summary, igdbGame.storyline].filter(Boolean).join('\n\n');
+  const rawGenres = igdbGame.genres?.map(g => g.name).join(', ') || '';
+
+  // Execute translations in parallel for performance
+  const [translatedDescription, translatedGenres] = await Promise.all([
+    rawDescription ? translateToSpanish(rawDescription) : Promise.resolve(''),
+    rawGenres ? translateKeywords(rawGenres) : Promise.resolve(rawGenres)
+  ]);
+
+  const finalGenres = translatedGenres ? translatedGenres.split(',').map(s => s.trim()) : [];
 
   return {
     title: igdbGame.name,
-    shortDescription: summary ? summary.slice(0, 150) + '...' : '',
-    fullDescription: summary || '',
+    shortDescription: translatedDescription ? translatedDescription.slice(0, 150) + '...' : '',
+    fullDescription: translatedDescription || '',
     // Use 1080p for cover image to ensure high resolution
     coverImage: igdbGame.cover ? getImageUrl(igdbGame.cover.image_id, '1080p') : '',
     screenshots: igdbGame.screenshots?.map(s => getImageUrl(s.image_id, '1080p')).slice(0, 4) || [],
-    genre: igdbGame.genres?.map(g => g.name) || [],
+    genre: finalGenres.length > 0 ? finalGenres : (igdbGame.genres?.map(g => g.name) || []),
     platform: igdbGame.platforms?.map(p => p.name) || [],
     releaseDate: releaseDate,
     developer: developer,
-    // Defaults for fields IGDB doesn't provide directly or matches poorly
+    // Defaults for fields IGDB doesn't provide directly
     downloadSize: 'TBD',
     type: 'ISO',
     language: 'English',
