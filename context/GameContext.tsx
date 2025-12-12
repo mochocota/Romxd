@@ -51,13 +51,14 @@ const DEFAULT_ADS_CONFIG: AdsConfig = {
   globalBodyScript: ''
 };
 
+// Updated with user provided Repo Data
 const DEFAULT_GISCUS_CONFIG: GiscusConfig = {
-  repo: '',
-  repoId: '',
-  category: '',
-  categoryId: '',
+  repo: 'mochocota/Romxd',
+  repoId: 'R_kgDOQnvZpA',
+  category: '', // User needs to fill this in Admin
+  categoryId: '', // User needs to fill this in Admin
   mapping: 'pathname',
-  enabled: false
+  enabled: true
 };
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -102,7 +103,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [giscusConfig, setGiscusConfig] = useState<GiscusConfig>(() => {
       const saved = localStorage.getItem('romxd_giscus_config');
-      return saved ? JSON.parse(saved) : DEFAULT_GISCUS_CONFIG;
+      // If local storage has empty repo but we now have a default, use default
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (!parsed.repo && DEFAULT_GISCUS_CONFIG.repo) {
+            return { ...parsed, repo: DEFAULT_GISCUS_CONFIG.repo, repoId: DEFAULT_GISCUS_CONFIG.repoId, enabled: true };
+        }
+        return parsed;
+      }
+      return DEFAULT_GISCUS_CONFIG;
   });
 
   // Persist Local Settings

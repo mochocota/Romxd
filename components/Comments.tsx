@@ -32,7 +32,7 @@ export const Comments: React.FC = () => {
           reactionsEnabled="1"
           emitMetadata="0"
           inputPosition="top"
-          theme={theme === 'dark' ? 'transparent_dark' : 'light'}
+          theme={theme === 'dark' ? 'dark_high_contrast' : 'light'}
           lang="es"
           loading="lazy"
         />
