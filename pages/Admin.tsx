@@ -68,6 +68,7 @@ export const Admin: React.FC = () => {
   // View State: 'list' | 'editor' | 'categories'
   const [view, setView] = useState<'list' | 'editor' | 'categories'>('list');
   const [isEditing, setIsEditing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // New loading state
   const [activeTab, setActiveTab] = useState<'basic' | 'media' | 'tech'>('basic');
   const [formData, setFormData] = useState<Game>(INITIAL_FORM_STATE);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
@@ -251,20 +252,35 @@ export const Admin: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title) { alert('Title is required'); return; }
+    if (!formData.title) { alert('El título es obligatorio'); return; }
 
-    const finalSlug = slugify(formData.slug || formData.title);
-    const gameToSave = {
-        ...formData,
-        slug: finalSlug,
-    };
+    setIsSubmitting(true);
+    try {
+        const finalSlug = slugify(formData.slug || formData.title);
+        const gameToSave = {
+            ...formData,
+            slug: finalSlug,
+        };
 
-    if (isEditing) {
-      await updateGame(gameToSave);
-    } else {
-      await addGame({ ...gameToSave, id: Date.now().toString() });
+        if (isEditing) {
+            await updateGame(gameToSave);
+        } else {
+            // Ensure ID is generated for new games
+            const newId = Date.now().toString();
+            await addGame({ ...gameToSave, id: newId });
+        }
+        
+        forceBackToList();
+    } catch (error: any) {
+        console.error("Error saving game:", error);
+        // Show specific error messages
+        const errorMessage = error.code === 'permission-denied' 
+            ? 'Permiso denegado: Verifica las reglas de Firestore en la consola de Firebase.' 
+            : error.message || 'Ocurrió un error desconocido.';
+        alert(`Error al publicar: ${errorMessage}`);
+    } finally {
+        setIsSubmitting(false);
     }
-    forceBackToList();
   };
 
   const handleGenerateSitemap = () => {
@@ -493,13 +509,7 @@ export const Admin: React.FC = () => {
 
   // --- RENDER SECTIONS ---
   if (view === 'categories') {
-    // ... [Same categories render logic] ...
     const listItems = managerTab === 'platforms' ? platforms : tags;
-    // For brevity, just keeping the structure intact.
-    // The previous implementation is massive, assuming standard behavior here.
-    // Copying the full implementation from the previous file content is implied,
-    // but here I will just output the FULL Admin component content since I'm overwriting the file.
-    
     return (
         <div className="min-h-screen pb-12 bg-gray-100 dark:bg-[#333] transition-colors duration-300 w-full overflow-x-hidden">
              <div className="bg-white dark:bg-[#222] border-b border-gray-200 dark:border-[#444] sticky top-0 z-30 shadow-sm">
@@ -702,7 +712,10 @@ export const Admin: React.FC = () => {
                     </div>
                     <div className="p-6 bg-gray-50 dark:bg-[#1f1f1f] border-t dark:border-[#444] flex justify-end gap-4">
                         <button type="button" onClick={handleBackToList} className="px-6 py-2 text-zinc-600 dark:text-zinc-400">Cancelar</button>
-                        <button type="submit" className="bg-orange-600 text-white px-8 py-2 rounded font-bold flex items-center gap-2"><Save size={18}/> {isEditing ? 'Guardar Cambios' : 'Publicar'}</button>
+                        <button type="submit" disabled={isSubmitting} className="bg-orange-600 text-white px-8 py-2 rounded font-bold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                            {isSubmitting ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>} 
+                            {isEditing ? 'Guardar Cambios' : 'Publicar'}
+                        </button>
                     </div>
                 </form>
             </div>
