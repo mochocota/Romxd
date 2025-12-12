@@ -16,6 +16,7 @@ export const Navbar: React.FC = () => {
   const handleSearch = () => {
     if (searchTerm.trim()) {
       navigate(`/?search=${encodeURIComponent(searchTerm)}`);
+      setSearchTerm('');
     } else {
       navigate('/');
     }
