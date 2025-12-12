@@ -82,15 +82,6 @@
         100% { color: #f97316; text-shadow: 0 0 5px rgba(249, 115, 22, 0.6); }
       }
 
-      @keyframes glitch-shake {
-        0% { transform: translate(0); }
-        20% { transform: translate(-2px, 2px); }
-        40% { transform: translate(-2px, -2px); }
-        60% { transform: translate(2px, 2px); }
-        80% { transform: translate(2px, -2px); }
-        100% { transform: translate(0); }
-      }
-
       .logo-rom {
         color: var(--logo-rom-color);
         transition: color 0.3s ease;
@@ -104,21 +95,6 @@
       
       html.dark .logo-xd {
         animation: rainbow-cycle-neon 8s linear infinite;
-      }
-
-      .logo-anim-container:hover {
-        animation: glitch-shake 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both infinite;
-      }
-      
-      .logo-anim-container:hover .logo-rom {
-        color: var(--logo-rom-color);
-        text-shadow: 2px 2px rgba(0,0,0,0.2);
-      }
-      
-      .logo-anim-container:hover .logo-xd {
-        animation: none;
-        color: #f59e0b;
-        text-shadow: 2px 0 #00ffff, -2px 0 #ff00ff;
       }
 
     </style>

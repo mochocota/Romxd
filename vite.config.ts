@@ -7,6 +7,8 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, (process as any).cwd(), '');
 
   return {
+    // Configuración clave para GitHub Pages: permite rutas relativas para assets
+    base: './',
     plugins: [react()],
     build: {
       outDir: 'dist',
