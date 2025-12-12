@@ -117,8 +117,14 @@ export const getIGDBGameDetails = async (gameId: number): Promise<Partial<Game>>
 
   // Prepare text for translation
   // Combine summary and storyline for a richer description
-  const rawDescription = [igdbGame.summary, igdbGame.storyline].filter(Boolean).join('\n\n');
+  const partsToTranslate = [];
+  if (igdbGame.summary) partsToTranslate.push(igdbGame.summary);
+  if (igdbGame.storyline) partsToTranslate.push(igdbGame.storyline);
+  
+  const rawDescription = partsToTranslate.join('\n\n');
   const rawGenres = igdbGame.genres?.map(g => g.name).join(', ') || '';
+
+  console.log('Translating game:', igdbGame.name);
 
   // Execute translations in parallel for performance
   const [translatedDescription, translatedGenres] = await Promise.all([

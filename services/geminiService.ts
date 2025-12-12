@@ -2,20 +2,21 @@ import { GoogleGenAI, Chat } from "@google/genai";
 
 // Initialize Gemini Client
 // The API key must be obtained exclusively from the environment variable process.env.API_KEY
+// Note: Ensure VITE_GEMINI_API_KEY is set in your .env file
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const createGameAssistantChat = (): Chat => {
   return ai.chats.create({
     model: 'gemini-2.5-flash',
     config: {
-      systemInstruction: `Eres el asistente virtual oficial de "RomXD", un sitio web elegante y minimalista para descargar videojuegos (ROMs, ISOs, traducciones y hacks).
+      systemInstruction: `You are the official AI assistant for "RomXD", a minimalist video game download blog.
       
-      Tu objetivo es ayudar a los usuarios a encontrar su próximo juego, explicar diferencias entre versiones (Hack, Translation, ISO) o solucionar dudas sobre emulación.
+      Goal: Help users find games, explain version differences (Hack, Translation, ISO), and answer emulation questions.
       
-      Tono: Profesional, conciso, experto y ligeramente técnico pero accesible.
-      Idioma: Español.
+      Tone: Professional, concise, expert, yet accessible.
+      Language: Spanish (Español).
       
-      Si te preguntan por un juego que no está en la lista mostrada, usa tu conocimiento general sobre videojuegos retro y emulación.`,
+      If asked about a game not in the list, use your general knowledge about retro gaming.`,
     },
   });
 };
@@ -26,10 +27,29 @@ export const getGeminiResponseStream = async (chat: Chat, message: string) => {
 
 export const translateToSpanish = async (text: string): Promise<string> => {
   if (!text) return '';
+  
+  // Debug check for API Key
+  if (!process.env.API_KEY) {
+    console.warn('RomXD: API_KEY is missing. Translation skipped.');
+    return text;
+  }
+
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: `Traduce la siguiente descripción de un videojuego al español. Debe sonar profesional, atractivo, natural y mantener el formato (saltos de línea). Solo devuelve el texto traducido sin introducciones:\n\n"${text}"`,
+      config: {
+        temperature: 0.3, // Lower temperature for more accurate translation
+      },
+      contents: `You are a professional video game translator. Translate the following text to Spanish (Español). 
+      
+      Rules:
+      - Keep the tone professional and exciting.
+      - Maintain all formatting, paragraphs, and lists.
+      - Do not add introductory text like "Here is the translation".
+      - Output ONLY the translated text.
+
+      Text to translate:
+      "${text}"`,
     });
     return response.text?.trim() || text;
   } catch (error) {
@@ -40,10 +60,19 @@ export const translateToSpanish = async (text: string): Promise<string> => {
 
 export const translateKeywords = async (text: string): Promise<string> => {
   if (!text) return '';
+  
+  if (!process.env.API_KEY) return text;
+
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: `Traduce esta lista de géneros o etiquetas de videojuegos al español, separados por comas. Mantén un estilo breve. Ejemplo: "Fighting" -> "Lucha", "Role-playing (RPG)" -> "RPG". Solo devuelve la lista traducida:\n\n"${text}"`,
+      config: { temperature: 0.3 },
+      contents: `Translate this list of video game genres/tags to Spanish, separated by commas. 
+      Keep it concise. 
+      Example: "Fighting" -> "Lucha", "Role-playing (RPG)" -> "Rol (RPG)". 
+      Output ONLY the comma-separated list.
+      
+      Input: "${text}"`,
     });
     return response.text?.trim() || text;
   } catch (error) {
