@@ -169,7 +169,7 @@ export const GameDetails: React.FC = () => {
       <div className="bg-white dark:bg-[#222] border-b border-gray-200 dark:border-[#444] py-3 px-4 transition-colors duration-300">
         <div className="max-w-6xl mx-auto flex items-center gap-2 text-sm overflow-x-auto whitespace-nowrap scrollbar-hide">
             <Link to="/" className="text-orange-600 dark:text-orange-400 hover:underline">Home</Link>
-            <span className="text-zinc-400 dark:text-zinc-500">&gt;</span>
+            <span className="text-zinc-400 dark:text-zinc-500">{'>'}</span>
             <span className="text-zinc-600 dark:text-zinc-300">{game.title}</span>
         </div>
       </div>

@@ -524,8 +524,9 @@ service cloud.firestore {
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 <div className="space-y-4">
                                     <h4 className="font-bold text-orange-600 dark:text-orange-400">Scripts Globales</h4>
-                                    <div><label className="block text-sm font-bold mb-2 dark:text-zinc-300">Scripts &lt;head&gt;</label><textarea value={headScriptInput} onChange={(e) => setHeadScriptInput(e.target.value)} className="w-full h-32 bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] p-3 rounded text-xs dark:text-white" /></div>
-                                    <div><label className="block text-sm font-bold mb-2 dark:text-zinc-300">Scripts &lt;body&gt;</label><textarea value={bodyScriptInput} onChange={(e) => setBodyScriptInput(e.target.value)} className="w-full h-32 bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] p-3 rounded text-xs dark:text-white" /></div>
+                                    {/* FIX: Using safe strings {'<'} and {'>'} to prevent TS1382 error during build */}
+                                    <div><label className="block text-sm font-bold mb-2 dark:text-zinc-300">Scripts {'<'}head{'>'}</label><textarea value={headScriptInput} onChange={(e) => setHeadScriptInput(e.target.value)} className="w-full h-32 bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] p-3 rounded text-xs dark:text-white" /></div>
+                                    <div><label className="block text-sm font-bold mb-2 dark:text-zinc-300">Scripts {'<'}body{'>'}</label><textarea value={bodyScriptInput} onChange={(e) => setBodyScriptInput(e.target.value)} className="w-full h-32 bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] p-3 rounded text-xs dark:text-white" /></div>
                                 </div>
                                 <div className="space-y-4">
                                      <h4 className="font-bold text-orange-600 dark:text-orange-400">Bloques de Anuncios</h4>
