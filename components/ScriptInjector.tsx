@@ -19,24 +19,11 @@ export const ScriptInjector: React.FC = () => {
         if (!htmlCode) return;
 
         // --- SAFETY FILTER: BLOCK LEGACY GISCUS SCRIPTS ---
-        // If the user still has Giscus configured in their Admin > Scripts settings (LocalStorage/Firestore),
-        // we strip it out here to ensure it doesn't render over our new Firebase system.
-        if (htmlCode.includes('giscus.app')) {
-            // Regex to match <script> tags containing giscus.app (simple robust match)
-            const giscusRegex = /<script[^>]*src=["'].*?giscus\.app.*?["'][^>]*>.*?<\/script>/gis;
-            const cleanHtml = htmlCode.replace(giscusRegex, '');
-            
-            // If strictly just the script tag, we might have specific <script>...class="giscus"...</script> block 
-            // depending on how they pasted it. We'll also just block if it contains the giscus class div.
-            if (htmlCode.includes('class="giscus"')) {
-                 htmlCode = htmlCode.replace(/<div class="giscus"><\/div>/g, '');
-            }
-
-            // Apply regex replacement
-            htmlCode = cleanHtml;
-            
-            // If nothing left, return
-            if (!htmlCode.trim()) return;
+        // Completely strip out any script or HTML block related to Giscus
+        // This is a nuclear option to ensure it doesn't render even if configured.
+        if (htmlCode.toLowerCase().includes('giscus')) {
+            console.warn('Blocked Giscus script injection attempt.');
+            return;
         }
         // --------------------------------------------------
 
@@ -64,6 +51,19 @@ export const ScriptInjector: React.FC = () => {
 
     // Inject Body Scripts (Usually appended to the end of body)
     injectScripts(adsConfig.globalBodyScript, document.body, 'global-body-scripts');
+
+    // --- AGGRESSIVE CLEANUP ---
+    // In case Giscus was injected previously or via other means, assume any .giscus class element is unwanted
+    // and remove it from the DOM.
+    const cleanupGiscus = () => {
+        const giscusElements = document.querySelectorAll('.giscus, iframe[src*="giscus"]');
+        giscusElements.forEach(el => el.remove());
+    };
+    
+    // Run cleanup immediately and on a small interval to catch delayed injections
+    cleanupGiscus();
+    const interval = setInterval(cleanupGiscus, 1000);
+    return () => clearInterval(interval);
 
   }, [adsConfig.globalHeadScript, adsConfig.globalBodyScript]);
 
