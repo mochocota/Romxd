@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Base SEO Meta Tags -->
+    <title>RomXD - Descarga Videojuegos, ROMs e ISOs</title>
+    <meta name="description" content="Blog minimalista para descargar videojuegos retro, ROMs, ISOs y traducciones. Catálogo actualizado para PSP, PS2, GBA y más." />
+    <meta name="keywords" content="roms, isos, videojuegos, retro, psp, ps2, descargar juegos, emuladores" />
+    <meta name="robots" content="index, follow" />
+    <meta name="author" content="RomXD" />
+    <link rel="canonical" href="https://romxd.com" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="RomXD - Descarga Videojuegos" />
+    <meta property="og:description" content="Descubre y descarga los mejores videojuegos clásicos y mods." />
+    <meta property="og:image" content="https://romxd.com/og-image.jpg" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:title" content="RomXD - Descarga Videojuegos" />
+    <meta property="twitter:description" content="Descubre y descarga los mejores videojuegos clásicos y mods." />
+
+    <!-- Tailwind via CDN for simplicity, though PostCSS is better in Vite, this keeps it working immediately -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Roboto', 'sans-serif'],
+              pixel: ['"Press Start 2P"', 'cursive'],
+            }
+          }
+        }
+      }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Roboto', sans-serif;
+      }
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #555;
+      }
+
+      /* --- RomXD Adaptive Logo Animations --- */
+      :root {
+        --logo-rom-color: #27272a; /* Zinc 800 */
+      }
+      html.dark {
+        --logo-rom-color: #ffffff;
+      }
+
+      @keyframes rainbow-cycle {
+        0% { color: #ea580c; text-shadow: 2px 2px 0px rgba(234, 88, 12, 0.2); }
+        25% { color: #db2777; text-shadow: 2px 2px 0px rgba(219, 39, 119, 0.2); }
+        50% { color: #9333ea; text-shadow: 2px 2px 0px rgba(147, 51, 234, 0.2); }
+        75% { color: #0284c7; text-shadow: 2px 2px 0px rgba(2, 132, 199, 0.2); }
+        100% { color: #ea580c; text-shadow: 2px 2px 0px rgba(234, 88, 12, 0.2); }
+      }
+
+      @keyframes rainbow-cycle-neon {
+        0% { color: #f97316; text-shadow: 0 0 5px rgba(249, 115, 22, 0.6); } 
+        25% { color: #ec4899; text-shadow: 0 0 5px rgba(236, 72, 153, 0.6); }
+        50% { color: #a855f7; text-shadow: 0 0 5px rgba(168, 85, 247, 0.6); }
+        75% { color: #38bdf8; text-shadow: 0 0 5px rgba(56, 189, 248, 0.6); }
+        100% { color: #f97316; text-shadow: 0 0 5px rgba(249, 115, 22, 0.6); }
+      }
+
+      @keyframes glitch-shake {
+        0% { transform: translate(0); }
+        20% { transform: translate(-2px, 2px); }
+        40% { transform: translate(-2px, -2px); }
+        60% { transform: translate(2px, 2px); }
+        80% { transform: translate(2px, -2px); }
+        100% { transform: translate(0); }
+      }
+
+      .logo-rom {
+        color: var(--logo-rom-color);
+        transition: color 0.3s ease;
+      }
+
+      .logo-xd {
+        display: inline-block;
+        animation: rainbow-cycle 8s linear infinite;
+        transition: color 0.3s ease;
+      }
+      
+      html.dark .logo-xd {
+        animation: rainbow-cycle-neon 8s linear infinite;
+      }
+
+      .logo-anim-container:hover {
+        animation: glitch-shake 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both infinite;
+      }
+      
+      .logo-anim-container:hover .logo-rom {
+        color: var(--logo-rom-color);
+        text-shadow: 2px 2px rgba(0,0,0,0.2);
+      }
+      
+      .logo-anim-container:hover .logo-xd {
+        animation: none;
+        color: #f59e0b;
+        text-shadow: 2px 0 #00ffff, -2px 0 #ff00ff;
+      }
+
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+    "lucide-react": "https://esm.sh/lucide-react@^0.561.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "@google/genai": "https://esm.sh/@google/genai@^1.33.0",
+    "vite": "https://esm.sh/vite@^7.2.7",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.10.1",
+    "marked": "https://esm.sh/marked@^17.0.1",
+    "@giscus/react": "https://esm.sh/@giscus/react@^3.1.0",
+    "firebase/": "https://esm.sh/firebase@^12.6.0/"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
