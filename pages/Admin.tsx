@@ -142,7 +142,7 @@ service cloud.firestore {
     }
   }, [searchParams, games]);
 
-  // Initialize Ads and Giscus inputs
+  // Initialize Ads inputs
   useEffect(() => {
       if (view === 'categories') {
           if (managerTab === 'ads') {

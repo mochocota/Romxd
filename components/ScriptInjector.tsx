@@ -18,6 +18,28 @@ export const ScriptInjector: React.FC = () => {
 
         if (!htmlCode) return;
 
+        // --- SAFETY FILTER: BLOCK LEGACY GISCUS SCRIPTS ---
+        // If the user still has Giscus configured in their Admin > Scripts settings (LocalStorage/Firestore),
+        // we strip it out here to ensure it doesn't render over our new Firebase system.
+        if (htmlCode.includes('giscus.app')) {
+            // Regex to match <script> tags containing giscus.app (simple robust match)
+            const giscusRegex = /<script[^>]*src=["'].*?giscus\.app.*?["'][^>]*>.*?<\/script>/gis;
+            const cleanHtml = htmlCode.replace(giscusRegex, '');
+            
+            // If strictly just the script tag, we might have specific <script>...class="giscus"...</script> block 
+            // depending on how they pasted it. We'll also just block if it contains the giscus class div.
+            if (htmlCode.includes('class="giscus"')) {
+                 htmlCode = htmlCode.replace(/<div class="giscus"><\/div>/g, '');
+            }
+
+            // Apply regex replacement
+            htmlCode = cleanHtml;
+            
+            // If nothing left, return
+            if (!htmlCode.trim()) return;
+        }
+        // --------------------------------------------------
+
         // 2. Create a range to parse the HTML string into actual DOM nodes
         // ContextualFragment is required to make <script> tags executable
         try {
