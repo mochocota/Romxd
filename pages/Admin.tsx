@@ -318,14 +318,14 @@ service cloud.firestore {
   };
 
   const handleGenerateSitemap = () => {
-    const baseUrl = window.location.origin + window.location.pathname; 
-    const hashPart = baseUrl.endsWith('/') ? '#/' : '/#/';
+    // Generate clean URLs (without /#/)
+    const baseUrl = window.location.origin; 
     const date = new Date().toISOString().split('T')[0];
 
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
     xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
     xml += '  <url>\n';
-    xml += `    <loc>${baseUrl}</loc>\n`;
+    xml += `    <loc>${baseUrl}/</loc>\n`;
     xml += `    <lastmod>${date}</lastmod>\n`;
     xml += '    <changefreq>daily</changefreq>\n';
     xml += '    <priority>1.0</priority>\n';
@@ -333,7 +333,7 @@ service cloud.firestore {
     
     // ... rest of sitemap logic
     games.forEach(game => {
-        const gameUrl = `${baseUrl}${hashPart}game/${game.slug}`;
+        const gameUrl = `${baseUrl}/game/${game.slug}`;
         xml += '  <url>\n';
         xml += `    <loc>${gameUrl}</loc>\n`;
         xml += `    <lastmod>${date}</lastmod>\n`;
