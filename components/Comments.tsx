@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { MessageSquare, Send, User, Loader2, Sparkles, ChevronDown, ChevronUp, CornerDownRight, Reply, AlertCircle } from 'lucide-react';
+import { MessageSquare, Send, User, Loader2, Sparkles, ChevronDown, ChevronUp, CornerDownRight, Reply, AlertCircle, ShieldCheck } from 'lucide-react';
 import { useGames } from '../context/GameContext';
+import { useAuth } from '../context/AuthContext';
 import { db } from '../services/firebase';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { Comment } from '../types';
@@ -52,10 +53,16 @@ const CommentItem: React.FC<CommentItemProps> = ({
     submitting,
     depth = 0 
 }) => {
-    const [replyAuthor, setReplyAuthor] = useState('');
+    const { user } = useAuth();
+    const [replyAuthor, setReplyAuthor] = useState(user ? 'RomXD Admin' : '');
     const [replyContent, setReplyContent] = useState('');
 
-    const avatarColor = stringToColor(comment.author);
+    useEffect(() => {
+        if (user) setReplyAuthor('RomXD Admin');
+    }, [user]);
+
+    const isAdminComment = comment.author === 'RomXD Admin';
+    const avatarColor = isAdminComment ? '#ea580c' : stringToColor(comment.author); // Orange for admin
     const initial = comment.author.charAt(0).toUpperCase();
 
     // Find children
@@ -73,15 +80,16 @@ const CommentItem: React.FC<CommentItemProps> = ({
                         ${isRoot ? 'w-10 h-10 text-sm' : 'w-8 h-8 text-xs'}`}
                     style={{ backgroundColor: avatarColor }}
                 >
-                    {initial}
+                    {isAdminComment ? <ShieldCheck size={isRoot ? 20 : 16} className="text-white" /> : initial}
                 </div>
 
                 <div className="flex-1 min-w-0">
                     {/* Bubble */}
-                    <div className={`bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl rounded-tl-none border border-gray-100 dark:border-[#333] ${isRoot ? 'p-4' : 'p-3'}`}>
+                    <div className={`rounded-2xl rounded-tl-none border ${isAdminComment ? 'bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-900/30' : 'bg-gray-50 dark:bg-[#1a1a1a] border-gray-100 dark:border-[#333]'} ${isRoot ? 'p-4' : 'p-3'}`}>
                         <div className="flex items-center justify-between mb-1">
-                            <span className={`font-bold text-zinc-800 dark:text-zinc-200 ${isRoot ? 'text-sm' : 'text-xs'}`}>
+                            <span className={`font-bold flex items-center gap-1.5 ${isRoot ? 'text-sm' : 'text-xs'} ${isAdminComment ? 'text-orange-700 dark:text-orange-400' : 'text-zinc-800 dark:text-zinc-200'}`}>
                                 {comment.author}
+                                {isAdminComment && <ShieldCheck size={14} className="fill-orange-500 text-white" />}
                             </span>
                             <span className="text-[10px] uppercase font-medium text-zinc-400 flex items-center gap-1 whitespace-nowrap ml-2">
                                 {formatDate(comment.createdAt)}
@@ -115,14 +123,19 @@ const CommentItem: React.FC<CommentItemProps> = ({
                                     </span>
                                     <button type="button" onClick={() => onReply('')} className="text-zinc-400 hover:text-red-500"><ChevronUp size={14}/></button>
                                 </div>
-                                <input 
-                                    type="text" 
-                                    placeholder="Tu Nombre" 
-                                    value={replyAuthor}
-                                    onChange={e => setReplyAuthor(e.target.value)}
-                                    className="w-full p-2 text-xs border border-gray-200 dark:border-[#444] rounded bg-gray-50 dark:bg-[#111] dark:text-white focus:border-orange-500 outline-none"
-                                    required
-                                />
+                                <div className="relative">
+                                    {user && <div className="absolute right-2 top-2"><ShieldCheck size={14} className="text-orange-500"/></div>}
+                                    <input 
+                                        type="text" 
+                                        placeholder="Tu Nombre" 
+                                        value={replyAuthor}
+                                        onChange={e => setReplyAuthor(e.target.value)}
+                                        readOnly={!!user}
+                                        className={`w-full p-2 text-xs border border-gray-200 dark:border-[#444] rounded dark:text-white focus:border-orange-500 outline-none
+                                            ${user ? 'bg-orange-50 dark:bg-orange-900/10 text-orange-700 font-bold cursor-not-allowed' : 'bg-gray-50 dark:bg-[#111]'}`}
+                                        required
+                                    />
+                                </div>
                                 <textarea 
                                     placeholder="Escribe tu respuesta..." 
                                     value={replyContent}
@@ -177,6 +190,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
 export const Comments: React.FC<CommentsProps> = ({ gameId }) => {
   const { addComment } = useGames();
   const { toast } = useUI();
+  const { user } = useAuth();
   
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -186,11 +200,16 @@ export const Comments: React.FC<CommentsProps> = ({ gameId }) => {
   const [isOpen, setIsOpen] = useState(false);
   
   // Root Form State
-  const [author, setAuthor] = useState('');
+  const [author, setAuthor] = useState(user ? 'RomXD Admin' : '');
   const [content, setContent] = useState('');
 
   // Replying State
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
+
+  // Sync admin name if login state changes
+  useEffect(() => {
+      if (user) setAuthor('RomXD Admin');
+  }, [user]);
 
   // Fetch comments
   useEffect(() => {
@@ -325,19 +344,21 @@ export const Comments: React.FC<CommentsProps> = ({ gameId }) => {
               <div className="order-1 lg:order-2">
                  <div className="bg-gray-50 dark:bg-[#1a1a1a] p-6 rounded-2xl border border-gray-100 dark:border-[#333] sticky top-24">
                      <h4 className="font-bold text-zinc-800 dark:text-white mb-4 text-sm uppercase tracking-wide flex items-center gap-2">
-                        Escribe tu comentario
+                        {user ? <><ShieldCheck size={16} className="text-orange-500"/> Comentario Oficial</> : 'Escribe tu comentario'}
                      </h4>
                      <form onSubmit={(e) => handleSubmit(e)} className="space-y-4">
                          <div className="space-y-1">
                              <label className="text-xs font-bold text-zinc-400 uppercase ml-1">Nombre / Alias</label>
                              <div className="relative">
-                                <User className="absolute left-3 top-3 text-zinc-400" size={16} />
+                                <User className={`absolute left-3 top-3 ${user ? 'text-orange-500' : 'text-zinc-400'}`} size={16} />
                                 <input 
                                     type="text" 
                                     value={author}
                                     onChange={(e) => setAuthor(e.target.value)}
-                                    placeholder="Ej: RetroGamer99" 
-                                    className="w-full pl-10 pr-4 py-3 bg-white dark:bg-[#111] border border-gray-200 dark:border-[#333] rounded-xl text-sm focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/10 dark:text-white transition-all shadow-sm"
+                                    placeholder="Ej: RetroGamer99"
+                                    readOnly={!!user}
+                                    className={`w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-[#333] rounded-xl text-sm focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/10 transition-all shadow-sm
+                                        ${user ? 'bg-orange-50 dark:bg-orange-900/10 text-orange-700 dark:text-orange-400 font-bold cursor-not-allowed' : 'bg-white dark:bg-[#111] dark:text-white'}`}
                                     required
                                 />
                              </div>
@@ -358,7 +379,7 @@ export const Comments: React.FC<CommentsProps> = ({ gameId }) => {
                             className="w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white font-bold py-3 rounded-xl text-sm flex items-center justify-center gap-2 transition-all transform active:scale-95 disabled:opacity-50 shadow-lg shadow-orange-500/20"
                          >
                              {submitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-                             Publicar Comentario
+                             {user ? 'Publicar como Admin' : 'Publicar Comentario'}
                          </button>
                      </form>
                  </div>
