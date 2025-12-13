@@ -18,33 +18,44 @@ const BASE_METADATA_URL = 'https://archive.org/metadata';
 /**
  * Busca "Items" (Colecciones o Juegos sueltos) en Internet Archive.
  * MEJORA: Búsqueda profunda y tolerante a fallos (Fuzzy Search).
- * Permite encontrar "Castlevania Portrain" (typo) como "Castlevania Portrait".
+ * MEJORA 2: Soporte para búsqueda dentro de colecciones específicas (Trusted Collections).
  */
-export const searchArchiveItems = async (query: string): Promise<ArchiveItem[]> => {
-  // 1. Limpieza básica: Quitamos acentos y caracteres raros, dejamos espacios.
+export const searchArchiveItems = async (query: string, collections: string[] = []): Promise<ArchiveItem[]> => {
+  // 1. Limpieza básica
   const cleanQuery = query.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9\s]/g, " ");
   
   const terms = cleanQuery.split(/\s+/).filter(t => t.length > 0);
   if (terms.length === 0) return [];
 
   // 2. Construcción de términos fuzzy
-  // Añadimos '~' a las palabras significativas (>2 letras) para permitir errores tipográficos (Distance 1-2)
-  // Ejemplo: "Portrain" -> "Portrain~" machea con "Portrait"
   const fuzzyQuery = terms.map(t => t.length > 2 ? `${t}~` : t).join(' AND ');
-  
-  // 3. Query exacta para dar prioridad (Boost ^10) si el usuario lo escribió bien
   const exactQuery = terms.join(' AND ');
 
-  // 4. Query compuesta
-  // Buscamos en 'title' (con boost exacto y fallback fuzzy) y en 'identifier'
-  const q = `(title:(${exactQuery}^10 OR ${fuzzyQuery}) OR identifier:(${fuzzyQuery})) AND mediatype:(software)`;
+  // 3. Construcción de la Query Base (Título o ID)
+  const textQuery = `(title:(${exactQuery}^10 OR ${fuzzyQuery}) OR identifier:(${fuzzyQuery}))`;
+
+  // 4. Lógica de Colecciones
+  let collectionQuery = '';
+  
+  if (collections.length > 0) {
+      // Si hay colecciones de confianza, forzamos la búsqueda DENTRO de ellas.
+      // Sintaxis: AND (collection:(id1 OR id2 OR id3))
+      const collectionsOr = collections.map(c => `"${c}"`).join(' OR ');
+      collectionQuery = `AND collection:(${collectionsOr})`;
+  } else {
+      // Si no hay colecciones, búsqueda global pero solo software
+      collectionQuery = `AND mediatype:(software)`;
+  }
+
+  // Query Final
+  const q = `${textQuery} ${collectionQuery}`;
   
   const params = new URLSearchParams({
     q: q,
-    fl: 'identifier,title,downloads,collection', // Campos a devolver
-    sort: 'downloads desc', // Ordenar por popularidad
+    fl: 'identifier,title,downloads,collection',
+    sort: 'downloads desc',
     output: 'json',
-    rows: '35', // Un poco más de resultados para deep search
+    rows: '50', // Aumentamos filas para dar más opciones
     page: '1'
   });
 
@@ -69,7 +80,7 @@ export const getArchiveFiles = async (identifier: string): Promise<ArchiveFile[]
     
     if (!data.files || !Array.isArray(data.files)) return [];
 
-    // Filtramos para devolver solo archivos relevantes (ROMs, ISOs, ZIPs, 7z, RAR)
+    // Filtramos para devolver solo archivos relevantes
     const validExtensions = ['.iso', '.cso', '.rom', '.bin', '.cue', '.7z', '.zip', '.rar', '.chd', '.rvz', '.wbfs', '.nds', '.gba', '.cia'];
     
     const validFiles = data.files.filter((file: any) => {
@@ -77,14 +88,12 @@ export const getArchiveFiles = async (identifier: string): Promise<ArchiveFile[]
         return validExtensions.some(ext => name.endsWith(ext));
     }) as ArchiveFile[];
 
-    // Algoritmo de ordenamiento: Priorizar Europa/Español al principio de la lista
+    // Algoritmo de ordenamiento: Priorizar Europa/Español
     const priorityTerms = [
         'europe', 'eur', 'eu', 
         'spain', 'spanish', 'español', 'castellano', 'latino', 
         'multi', 'traducido', 'patch',
-        // Variantes específicas para "es"
         '(es)', '[es]', '_es_', ' es ', '-es-', '.es.',
-        // Patrones para listas de idiomas ej: (En,Fr,Es,De)
         ',es,', ',es)', '(es,', 'es,', ', es', 'es)' 
     ];
     
@@ -95,7 +104,6 @@ export const getArchiveFiles = async (identifier: string): Promise<ArchiveFile[]
         const scoreA = priorityTerms.some(term => nameA.includes(term)) ? 1 : 0;
         const scoreB = priorityTerms.some(term => nameB.includes(term)) ? 1 : 0;
         
-        // Si B tiene prioridad y A no, B va primero.
         return scoreB - scoreA;
     });
 
@@ -111,6 +119,5 @@ export const getArchiveFiles = async (identifier: string): Promise<ArchiveFile[]
  * Genera el enlace de descarga directa final.
  */
 export const generateDirectLink = (identifier: string, filename: string): string => {
-    // Es crucial codificar el nombre del archivo porque suele tener espacios y símbolos
     return `https://archive.org/download/${identifier}/${encodeURIComponent(filename)}`;
 };
