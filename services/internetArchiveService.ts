@@ -17,25 +17,25 @@ const BASE_METADATA_URL = 'https://archive.org/metadata';
 
 /**
  * Busca "Items" (Colecciones o Juegos sueltos) en Internet Archive.
- * AHORA FILTRADO: Prioriza Europa, España, Español, Multi-lenguaje y Parches.
+ * CAMBIO: Se ha eliminado el filtro estricto de región en el título del ITEM.
+ * Esto corrige el problema donde juegos como "Pokemon X" no aparecían porque el contenedor
+ * no tenía "Es" o "Europe" en su título principal, aunque sus archivos internos sí.
  */
 export const searchArchiveItems = async (query: string): Promise<ArchiveItem[]> => {
-  // Palabras clave para el enfoque regional/idioma
-  // Agregamos variantes de abreviaturas como "Es", "Eur", "Eu" para cubrir más casos.
-  const regionFilter = '(Europe OR Eur OR Eu OR Spain OR Spanish OR Español OR Multi OR Es OR (Es) OR [Es] OR Traducido OR Castellano OR Latino OR Patch OR Patcher)';
-  
-  // Construimos la query compuesta:
-  // 1. El término del usuario en Título o ID.
-  // 2. AND: Que contenga alguno de los términos regionales (Europe, Spanish, etc).
-  // 3. AND: Que sea software.
-  const q = `((title:(${query}) OR identifier:(${query})) AND (title:(${regionFilter}) OR identifier:(${regionFilter}))) AND mediatype:(software)`;
+  // 1. Normalizar la búsqueda: quitar acentos y caracteres especiales (Pokémon -> Pokemon)
+  const cleanQuery = query.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  // 2. Query General: Buscamos por título o identificador.
+  // Nota: Ya no forzamos "AND (Europe OR Es...)" aquí para no ocultar resultados válidos.
+  // La priorización de idioma se hace en el siguiente paso (getArchiveFiles).
+  const q = `(title:(${cleanQuery}) OR identifier:(${cleanQuery})) AND mediatype:(software)`;
   
   const params = new URLSearchParams({
     q: q,
     fl: 'identifier,title,downloads,collection', // Campos a devolver
     sort: 'downloads desc', // Ordenar por popularidad
     output: 'json',
-    rows: '30', // Aumentamos resultados para tener variedad de versiones
+    rows: '30',
     page: '1'
   });
 
@@ -73,8 +73,10 @@ export const getArchiveFiles = async (identifier: string): Promise<ArchiveFile[]
         'europe', 'eur', 'eu', 
         'spain', 'spanish', 'español', 'castellano', 'latino', 
         'multi', 'traducido', 'patch',
-        // Variantes específicas para "es" evitando coincidencias falsas (como "best" o "test")
-        '(es)', '[es]', '_es_', ' es ', '-es-', '.es.'
+        // Variantes específicas para "es"
+        '(es)', '[es]', '_es_', ' es ', '-es-', '.es.',
+        // Patrones para listas de idiomas ej: (En,Fr,Es,De)
+        ',es,', ',es)', '(es,', 'es,', ', es', 'es)' 
     ];
     
     validFiles.sort((a, b) => {
