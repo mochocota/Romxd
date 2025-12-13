@@ -165,16 +165,24 @@ const CommentItem: React.FC<CommentItemProps> = ({
 
                     {/* 
                         RECURSIVE REPLIES CONTAINER 
-                        Logic: Only add indentation (margin-left) if we are at the Root Level (isRoot).
-                        If we are already in a reply (depth > 0), do NOT add extra margin.
-                        This flattens the hierarchy visually after the first level.
+                        Logic to Stop "Staircase" Overflow:
+                        
+                        1. Root replies (Level 1) are indented normally.
+                        2. Deep replies (Level 2+) have a NEGATIVE margin equal to the Avatar + Gap width.
+                           This visually pulls them back to align with the parent comment, creating a flat look 
+                           for deep threads.
+                           
+                           Offset Calculation:
+                           Avatar (w-7) = 1.75rem
+                           Gap (gap-3)  = 0.75rem
+                           Total        = 2.5rem
                     */}
                     {replies.length > 0 && (
                         <div className={`
                             flex flex-col
                             ${isRoot 
                                 ? 'mt-3 ml-2 md:ml-6 pl-3 md:pl-4 border-l-2 border-gray-100 dark:border-[#333]' // Indent only for direct children of root
-                                : 'mt-2 border-none ml-0 pl-0' // Flatten subsequent levels
+                                : 'mt-2 -ml-[2.5rem] w-[calc(100%+2.5rem)]' // Flatten deep levels by pulling back
                             }
                         `}>
                             {replies.map(reply => (
