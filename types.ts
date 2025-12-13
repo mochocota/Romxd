@@ -27,6 +27,7 @@ export interface Comment {
   author: string;
   content: string;
   createdAt: number; // Timestamp
+  parentId?: string; // ID of the parent comment if this is a reply
 }
 
 export interface Game {

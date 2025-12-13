@@ -14,7 +14,7 @@ interface GameContextType {
   deleteGame: (id: string) => Promise<void>;
   rateGame: (id: string, rating: number) => Promise<void>;
   incrementDownloads: (id: string) => Promise<void>;
-  addComment: (gameId: string, author: string, content: string) => Promise<void>;
+  addComment: (gameId: string, author: string, content: string, parentId?: string) => Promise<void>;
   addTag: (tag: string) => void;
   deleteTag: (tag: string) => void;
   addPlatform: (platform: string) => void;
@@ -165,7 +165,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const addComment = async (gameId: string, author: string, content: string) => {
+  const addComment = async (gameId: string, author: string, content: string, parentId?: string) => {
     const gameRef = doc(db, "games", gameId);
     const commentsCollectionRef = collection(db, "games", gameId, "comments");
     const newCommentRef = doc(commentsCollectionRef); // Create a new doc reference with Auto ID
@@ -176,13 +176,19 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (!gameDoc.exists()) throw new Error("Game not found");
 
             // 1. Create the comment in subcollection
-            transaction.set(newCommentRef, {
+            const commentData: any = {
                 id: newCommentRef.id,
                 gameId,
                 author,
                 content,
                 createdAt: Date.now()
-            });
+            };
+            
+            if (parentId) {
+                commentData.parentId = parentId;
+            }
+
+            transaction.set(newCommentRef, commentData);
 
             // 2. Increment the main comment counter on the game document
             const currentComments = gameDoc.data().comments || 0;
