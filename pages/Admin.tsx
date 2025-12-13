@@ -8,7 +8,7 @@ import {
     Bold, Italic, List, Heading, Link as LinkIcon, Quote, Image as ImageIcon,
     ArrowLeft, Search, Tags, X, Upload, Youtube, Layers, Menu as MenuIcon,
     RotateCcw, Wand2, Loader2, Download, Database, Megaphone, Code, Globe, 
-    MessageSquare, LogOut, AlertTriangle, Copy, Check
+    MessageSquare, LogOut, AlertTriangle, Copy, Check, Shield
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { searchIGDBGames, getIGDBGameDetails } from '../services/igdbService';
@@ -109,22 +109,20 @@ export const Admin: React.FC = () => {
   const rulesSnippet = `rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Reglas para Juegos
     match /games/{gameId} {
-      // Todos pueden leer los juegos
+      // 1. Lectura pública
       allow read: if true;
       
-      // Solo el Admin autenticado puede crear o borrar juegos
+      // 2. Creación/Borrado solo Admin
       allow create, delete: if request.auth != null;
       
-      // Todos pueden actualizar (para votos y contador de descargas/comentarios)
+      // 3. Actualización pública (CRÍTICO para Comentarios/Votos/Descargas)
+      // Permite que usuarios sin login incrementen contadores.
       allow update: if true;
 
-      // Subcolección de Comentarios
+      // 4. Subcolección Comentarios
       match /comments/{commentId} {
-        // Todos pueden leer y crear comentarios
         allow read, create: if true;
-        // Solo el Admin puede borrar o editar comentarios
         allow update, delete: if request.auth != null;
       }
     }
@@ -521,17 +519,20 @@ service cloud.firestore {
 
                     {managerTab === 'ads' ? (
                         <div className="animate-fadeIn">
+                            <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/20 p-4 rounded mb-6 text-sm text-zinc-600 dark:text-zinc-300">
+                                <strong>Nota:</strong> Utiliza estos campos para Google Adsense o Analytics. No utilices scripts de terceros no verificados.
+                            </div>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 <div className="space-y-4">
                                     <h4 className="font-bold text-orange-600 dark:text-orange-400">Scripts Globales</h4>
                                     {/* Using simple text labels to avoid TS1382 error completely */}
-                                    <div><label className="block text-sm font-bold mb-2 dark:text-zinc-300">Scripts (Head)</label><textarea value={headScriptInput} onChange={(e) => setHeadScriptInput(e.target.value)} className="w-full h-32 bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] p-3 rounded text-xs dark:text-white" /></div>
-                                    <div><label className="block text-sm font-bold mb-2 dark:text-zinc-300">Scripts (Body)</label><textarea value={bodyScriptInput} onChange={(e) => setBodyScriptInput(e.target.value)} className="w-full h-32 bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] p-3 rounded text-xs dark:text-white" /></div>
+                                    <div><label className="block text-sm font-bold mb-2 dark:text-zinc-300">Scripts (Head)</label><textarea value={headScriptInput} onChange={(e) => setHeadScriptInput(e.target.value)} className="w-full h-32 bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] p-3 rounded text-xs dark:text-white" placeholder="<!-- Códigos para <head> -->" /></div>
+                                    <div><label className="block text-sm font-bold mb-2 dark:text-zinc-300">Scripts (Body)</label><textarea value={bodyScriptInput} onChange={(e) => setBodyScriptInput(e.target.value)} className="w-full h-32 bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] p-3 rounded text-xs dark:text-white" placeholder="<!-- Códigos para fin de <body> -->" /></div>
                                 </div>
                                 <div className="space-y-4">
                                      <h4 className="font-bold text-orange-600 dark:text-orange-400">Bloques de Anuncios</h4>
-                                    <div><label className="block text-sm font-bold mb-2 dark:text-zinc-300">Bloque Superior</label><textarea value={topAdInput} onChange={(e) => setTopAdInput(e.target.value)} className="w-full h-32 bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] p-3 rounded text-xs dark:text-white" /></div>
-                                    <div><label className="block text-sm font-bold mb-2 dark:text-zinc-300">Bloque Inferior</label><textarea value={bottomAdInput} onChange={(e) => setBottomAdInput(e.target.value)} className="w-full h-32 bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] p-3 rounded text-xs dark:text-white" /></div>
+                                    <div><label className="block text-sm font-bold mb-2 dark:text-zinc-300">Bloque Superior</label><textarea value={topAdInput} onChange={(e) => setTopAdInput(e.target.value)} className="w-full h-32 bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] p-3 rounded text-xs dark:text-white" placeholder="<!-- Bloque 728x90 o Responsivo -->" /></div>
+                                    <div><label className="block text-sm font-bold mb-2 dark:text-zinc-300">Bloque Inferior</label><textarea value={bottomAdInput} onChange={(e) => setBottomAdInput(e.target.value)} className="w-full h-32 bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] p-3 rounded text-xs dark:text-white" placeholder="<!-- Bloque 300x250 o Responsivo -->" /></div>
                                 </div>
                             </div>
                             <button onClick={handleAddItem} className="mt-8 bg-orange-600 text-white px-8 py-3 rounded font-bold shadow-lg flex items-center gap-2 ml-auto"><Save size={18} /> Guardar Configuración</button>
@@ -699,20 +700,20 @@ service cloud.firestore {
   return (
     <div className="min-h-screen pb-12 bg-gray-100 dark:bg-[#333] transition-colors duration-300 w-full overflow-x-hidden">
         
-      {/* --- MODAL ERROR DE REGLAS --- */}
+      {/* --- MODAL DE REGLAS --- */}
       {showRulesModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn">
             <div className="bg-white dark:bg-[#222] w-full max-w-lg rounded-lg shadow-2xl overflow-hidden border border-red-500 animate-scaleIn">
                 <div className="p-4 bg-red-50 dark:bg-red-900/20 border-b border-red-100 dark:border-red-900/30 flex items-center gap-3">
-                    <AlertTriangle className="text-red-600 dark:text-red-400" size={24} />
-                    <h3 className="font-bold text-lg text-red-600 dark:text-red-400">Error de Permisos (Firebase Rules)</h3>
+                    <Shield className="text-red-600 dark:text-red-400" size={24} />
+                    <h3 className="font-bold text-lg text-red-600 dark:text-red-400">Configuración de Seguridad Requerida</h3>
                 </div>
                 <div className="p-6 space-y-4">
                     <p className="text-zinc-700 dark:text-zinc-300 text-sm">
-                        Firebase ha bloqueado la operación. Para habilitar los <strong>comentarios públicos</strong> y los votos, necesitas actualizar tus reglas de seguridad.
+                        Para habilitar los <strong>comentarios públicos</strong> y los votos, necesitas actualizar las reglas en tu consola de Firebase.
                     </p>
-                    <p className="text-zinc-700 dark:text-zinc-300 text-sm">
-                        Copia y pega este código en la consola de Firebase (Firestore Database > Rules):
+                    <p className="text-zinc-600 dark:text-zinc-400 text-xs italic">
+                        Copia y pega este código en: Firestore Database {'>'} Rules
                     </p>
                     
                     <div className="relative group">
@@ -733,7 +734,7 @@ service cloud.firestore {
                             onClick={() => setShowRulesModal(false)}
                             className="px-4 py-2 bg-zinc-200 dark:bg-[#333] hover:bg-zinc-300 dark:hover:bg-[#444] rounded text-zinc-800 dark:text-white font-bold transition-colors"
                         >
-                            Entendido, cerrar
+                            Cerrar
                         </button>
                     </div>
                 </div>
@@ -754,6 +755,7 @@ service cloud.firestore {
                 </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
+                <button onClick={() => setShowRulesModal(true)} className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-4 py-3 rounded font-bold flex gap-2 items-center hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"><Shield size={20}/> Ver Reglas</button>
                 <button onClick={handleGenerateSitemap} className="bg-zinc-800 text-white px-6 py-3 rounded font-bold flex gap-2 items-center"><Globe size={20}/> Sitemap</button>
                 <button onClick={handleManageCategories} className="bg-white dark:bg-[#222] border dark:border-[#444] text-zinc-700 dark:text-white px-6 py-3 rounded font-bold flex gap-2 items-center"><Layers size={20}/> Gestor</button>
                 <button onClick={handleCreateNew} className="bg-orange-600 text-white px-6 py-3 rounded shadow-lg font-bold flex gap-2 items-center"><Plus size={20}/> Nuevo</button>
