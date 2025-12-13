@@ -21,7 +21,8 @@ const BASE_METADATA_URL = 'https://archive.org/metadata';
  */
 export const searchArchiveItems = async (query: string): Promise<ArchiveItem[]> => {
   // Palabras clave para el enfoque regional/idioma
-  const regionFilter = '(Europe OR Spain OR Spanish OR Español OR Multi OR (Es) OR Traducido OR Castellano OR Latino OR Patch OR Patcher)';
+  // Agregamos variantes de abreviaturas como "Es", "Eur", "Eu" para cubrir más casos.
+  const regionFilter = '(Europe OR Eur OR Eu OR Spain OR Spanish OR Español OR Multi OR Es OR (Es) OR [Es] OR Traducido OR Castellano OR Latino OR Patch OR Patcher)';
   
   // Construimos la query compuesta:
   // 1. El término del usuario en Título o ID.
@@ -68,7 +69,13 @@ export const getArchiveFiles = async (identifier: string): Promise<ArchiveFile[]
     }) as ArchiveFile[];
 
     // Algoritmo de ordenamiento: Priorizar Europa/Español al principio de la lista
-    const priorityTerms = ['europe', 'spain', 'spanish', 'español', 'multi', '(es)', 'traducido', 'castellano'];
+    const priorityTerms = [
+        'europe', 'eur', 'eu', 
+        'spain', 'spanish', 'español', 'castellano', 'latino', 
+        'multi', 'traducido', 'patch',
+        // Variantes específicas para "es" evitando coincidencias falsas (como "best" o "test")
+        '(es)', '[es]', '_es_', ' es ', '-es-', '.es.'
+    ];
     
     validFiles.sort((a, b) => {
         const nameA = a.name.toLowerCase();
