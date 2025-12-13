@@ -9,7 +9,7 @@ import {
     Bold, Italic, List, Heading, Link as LinkIcon, Quote, Image as ImageIcon,
     ArrowLeft, Search, Tags, X, Upload, Youtube, Layers, Menu as MenuIcon,
     RotateCcw, Wand2, Loader2, Download, Database, Megaphone, Code, Globe, 
-    MessageSquare, LogOut, AlertTriangle, Copy, Check, Shield, Library, Archive
+    MessageSquare, LogOut, AlertTriangle, Copy, Check, Shield, Library, Archive, Globe2
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { searchIGDBGames, getIGDBGameDetails } from '../services/igdbService';
@@ -110,6 +110,7 @@ export const Admin: React.FC = () => {
   // Internet Archive State
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [archiveQuery, setArchiveQuery] = useState('');
+  const [searchGlobal, setSearchGlobal] = useState(false); // NEW STATE
   const [archiveItems, setArchiveItems] = useState<ArchiveItem[]>([]);
   const [archiveFiles, setArchiveFiles] = useState<ArchiveFile[]>([]);
   const [selectedArchiveItem, setSelectedArchiveItem] = useState<ArchiveItem | null>(null);
@@ -416,6 +417,7 @@ service cloud.firestore {
       setArchiveItems([]);
       setArchiveFiles([]);
       setSelectedArchiveItem(null);
+      setSearchGlobal(false); // Reset global search toggle
       setShowArchiveModal(true);
   };
 
@@ -426,14 +428,14 @@ service cloud.firestore {
       setArchiveItems([]);
       setSelectedArchiveItem(null);
       try {
-          // AQUI ESTÁ EL CAMBIO PRINCIPAL: PASAMOS LAS COLECCIONES AL SERVICIO
-          const items = await searchArchiveItems(archiveQuery, trustedCollections);
+          // Pass the global search flag
+          const items = await searchArchiveItems(archiveQuery, trustedCollections, searchGlobal);
           setArchiveItems(items);
           if (items.length === 0) {
-              if (trustedCollections.length > 0) {
-                  toast.info('No se encontraron resultados en tus repositorios. Intenta añadir más o busca en global.');
+              if (trustedCollections.length > 0 && !searchGlobal) {
+                  toast.info('No hay resultados en tus repositorios. Prueba activando la búsqueda global.');
               } else {
-                  toast.info('No se encontraron items');
+                  toast.info('No se encontraron items en Internet Archive.');
               }
           }
       } catch (error) {
@@ -709,7 +711,7 @@ service cloud.firestore {
 
                         {/* Search Bar (Only visible if not selecting a file) */}
                         {!selectedArchiveItem && (
-                            <div className="p-4 bg-white dark:bg-[#222] border-b border-gray-200 dark:border-[#444]">
+                            <div className="p-4 bg-white dark:bg-[#222] border-b border-gray-200 dark:border-[#444] space-y-4">
                                 <form onSubmit={handleSearchArchive} className="flex gap-2">
                                     <input 
                                         type="text" 
@@ -728,11 +730,29 @@ service cloud.firestore {
                                         Buscar
                                     </button>
                                 </form>
-                                {trustedCollections.length > 0 && (
-                                    <div className="mt-2 text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1 font-medium">
-                                        <Archive size={12} /> Búsqueda restringida a {trustedCollections.length} repositorios de confianza.
-                                    </div>
-                                )}
+                                
+                                <div className="flex items-center justify-between">
+                                    {trustedCollections.length > 0 && !searchGlobal ? (
+                                        <div className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1 font-medium">
+                                            <Archive size={12} /> Búsqueda restringida a {trustedCollections.length} repositorios.
+                                        </div>
+                                    ) : (
+                                        <div className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1 font-medium">
+                                            <Globe2 size={12} /> Búsqueda Global activada.
+                                        </div>
+                                    )}
+
+                                    {/* GLOBAL SEARCH TOGGLE */}
+                                    <label className="flex items-center gap-2 text-xs font-bold text-zinc-600 dark:text-zinc-300 cursor-pointer select-none">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={searchGlobal} 
+                                            onChange={(e) => setSearchGlobal(e.target.checked)}
+                                            className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                                        />
+                                        Buscar en todo Internet Archive
+                                    </label>
+                                </div>
                             </div>
                         )}
 

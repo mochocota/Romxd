@@ -18,9 +18,9 @@ const BASE_METADATA_URL = 'https://archive.org/metadata';
 /**
  * Busca "Items" (Colecciones o Juegos sueltos) en Internet Archive.
  * MEJORA: Búsqueda flexible (Fuzzy/Wildcard) con operadores OR.
- * Permite encontrar resultados que contengan "algo" de la búsqueda.
+ * MEJORA 2: Soporte para 'forceGlobal' para buscar fuera de los repositorios de confianza.
  */
-export const searchArchiveItems = async (query: string, collections: string[] = []): Promise<ArchiveItem[]> => {
+export const searchArchiveItems = async (query: string, collections: string[] = [], forceGlobal: boolean = false): Promise<ArchiveItem[]> => {
   // 1. Limpieza básica
   const cleanQuery = query.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9\s]/g, " ");
   
@@ -49,14 +49,15 @@ export const searchArchiveItems = async (query: string, collections: string[] = 
   // 3. Lógica de Colecciones (Repositorios)
   let collectionQuery = '';
   
-  if (collections.length > 0) {
-      // Si hay colecciones de confianza, restringimos la búsqueda a ellas.
+  // Si hay colecciones definidas Y NO estamos forzando búsqueda global, restringimos.
+  if (collections.length > 0 && !forceGlobal) {
       // Buscamos si el item pertenece a la colección (collection:) O si el item ES la colección (identifier:)
       const collectionsOr = collections.map(c => `"${c}"`).join(' OR ');
       collectionQuery = `AND (collection:(${collectionsOr}) OR identifier:(${collectionsOr}))`;
   } else {
-      // Si no hay colecciones definidas, buscamos globalmente solo software
-      collectionQuery = `AND mediatype:(software)`;
+      // Búsqueda GLOBAL: Buscamos software, datos, isos, etc.
+      // Ampliamos un poco los mediatypes para encontrar más ROMs que a veces están mal etiquetadas
+      collectionQuery = `AND (mediatype:(software) OR mediatype:(data) OR mediatype:(collection))`;
   }
 
   // Query Final
