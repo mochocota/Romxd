@@ -62,30 +62,37 @@ const CommentItem: React.FC<CommentItemProps> = ({
     }, [user]);
 
     const isAdminComment = comment.author === 'RomXD Admin';
-    const avatarColor = isAdminComment ? '#ea580c' : stringToColor(comment.author); // Orange for admin
+    const avatarColor = isAdminComment ? '#ea580c' : stringToColor(comment.author); 
     const initial = comment.author.charAt(0).toUpperCase();
 
     // Find children
     const replies = allComments.filter(c => c.parentId === comment.id).sort((a,b) => a.createdAt - b.createdAt);
     
-    // Logic for "Vertical Line" visualization
+    // Logic for Layout Flattening:
+    // depth 0 = Root Comment (Big)
+    // depth > 0 = Reply (Small)
     const isRoot = depth === 0;
 
     return (
-        <div className={`relative animate-fadeIn ${!isRoot ? 'mt-4' : 'mb-6'}`}>
+        <div className={`relative animate-fadeIn ${isRoot ? 'mb-6' : 'mb-3'}`}>
             <div className="flex gap-3">
                 {/* Avatar */}
                 <div 
-                    className={`rounded-full flex items-center justify-center text-white font-bold shrink-0 shadow-sm z-10
-                        ${isRoot ? 'w-10 h-10 text-sm' : 'w-8 h-8 text-xs'}`}
+                    className={`rounded-full flex items-center justify-center text-white font-bold shrink-0 shadow-sm z-10 select-none
+                        ${isRoot ? 'w-10 h-10 text-sm' : 'w-7 h-7 text-[10px]'}`}
                     style={{ backgroundColor: avatarColor }}
                 >
-                    {isAdminComment ? <ShieldCheck size={isRoot ? 20 : 16} className="text-white" /> : initial}
+                    {isAdminComment ? <ShieldCheck size={isRoot ? 20 : 14} className="text-white" /> : initial}
                 </div>
 
                 <div className="flex-1 min-w-0">
-                    {/* Bubble */}
-                    <div className={`rounded-2xl rounded-tl-none border ${isAdminComment ? 'bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-900/30' : 'bg-gray-50 dark:bg-[#1a1a1a] border-gray-100 dark:border-[#333]'} ${isRoot ? 'p-4' : 'p-3'}`}>
+                    {/* Bubble Content */}
+                    <div className={`rounded-2xl rounded-tl-none border transition-colors
+                        ${isAdminComment 
+                            ? 'bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-900/30' 
+                            : 'bg-gray-50 dark:bg-[#1a1a1a] border-gray-100 dark:border-[#333]'} 
+                        ${isRoot ? 'p-4' : 'p-3'}
+                    `}>
                         <div className="flex items-center justify-between mb-1">
                             <span className={`font-bold flex items-center gap-1.5 ${isRoot ? 'text-sm' : 'text-xs'} ${isAdminComment ? 'text-orange-700 dark:text-orange-400' : 'text-zinc-800 dark:text-zinc-200'}`}>
                                 {comment.author}
@@ -112,10 +119,10 @@ const CommentItem: React.FC<CommentItemProps> = ({
 
                     {/* Reply Form (Inline) */}
                     {replyingTo === comment.id && (
-                        <div className="mt-3 ml-2 animate-fadeIn bg-white dark:bg-[#222] p-3 rounded-lg border border-orange-200 dark:border-orange-900/30 shadow-lg">
+                        <div className="mt-3 ml-1 animate-fadeIn bg-white dark:bg-[#222] p-3 rounded-lg border border-orange-200 dark:border-orange-900/30 shadow-lg relative z-20">
                             <form onSubmit={(e) => {
                                 submitReply(e, comment.id, replyAuthor, replyContent);
-                                setReplyContent(''); // Clear after submit
+                                setReplyContent(''); 
                             }} className="space-y-3">
                                 <div className="flex justify-between items-center mb-1">
                                     <span className="text-xs font-bold text-orange-600 flex items-center gap-1">
@@ -156,27 +163,32 @@ const CommentItem: React.FC<CommentItemProps> = ({
                         </div>
                     )}
 
-                    {/* Nested Replies with Vertical Line */}
+                    {/* 
+                        RECURSIVE REPLIES CONTAINER 
+                        Logic: Only add indentation (margin-left) if we are at the Root Level (isRoot).
+                        If we are already in a reply (depth > 0), do NOT add extra margin.
+                        This flattens the hierarchy visually after the first level.
+                    */}
                     {replies.length > 0 && (
-                        <div className="relative mt-2">
-                             {/* The Vertical Line */}
-                            <div className="absolute left-[-22px] top-0 bottom-4 w-[2px] bg-gray-200 dark:bg-[#333]"></div>
-                            
-                            {/* Render children recursively but flatter visually */}
-                            <div className="ml-0">
-                                {replies.map(reply => (
-                                    <CommentItem 
-                                        key={reply.id} 
-                                        comment={reply} 
-                                        allComments={allComments}
-                                        onReply={onReply}
-                                        replyingTo={replyingTo}
-                                        submitReply={submitReply}
-                                        submitting={submitting}
-                                        depth={depth + 1}
-                                    />
-                                ))}
-                            </div>
+                        <div className={`
+                            flex flex-col
+                            ${isRoot 
+                                ? 'mt-3 ml-2 md:ml-6 pl-3 md:pl-4 border-l-2 border-gray-100 dark:border-[#333]' // Indent only for direct children of root
+                                : 'mt-2 border-none ml-0 pl-0' // Flatten subsequent levels
+                            }
+                        `}>
+                            {replies.map(reply => (
+                                <CommentItem 
+                                    key={reply.id} 
+                                    comment={reply} 
+                                    allComments={allComments}
+                                    onReply={onReply}
+                                    replyingTo={replyingTo}
+                                    submitReply={submitReply}
+                                    submitting={submitting}
+                                    depth={depth + 1}
+                                />
+                            ))}
                         </div>
                     )}
                 </div>
@@ -265,7 +277,6 @@ export const Comments: React.FC<CommentsProps> = ({ gameId }) => {
         toast.success(parentId ? "Respuesta publicada" : "Comentario publicado");
     } catch (error: any) {
         console.error(error);
-        // Show specific AI moderation reason if available
         const msg = error.message || "Error al publicar";
         toast.error(msg);
     } finally {
