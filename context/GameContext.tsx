@@ -271,12 +271,29 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const updateAdsConfig = (c: AdsConfig) => setAdsConfig(c);
 
-  // Helper para extraer ID de URL o usar el ID directo
+  // Helper mejorado para extraer ID de URL (Supports details/ and download/)
   const extractArchiveId = (input: string) => {
-      const match = input.match(/archive\.org\/details\/([^\/]+)/);
+      // Intenta limpiar espacios y query params
+      const cleanInput = input.split('?')[0].trim();
+
+      // Caso 1: URL con /details/
+      let match = cleanInput.match(/archive\.org\/details\/([^\/]+)/);
       if (match && match[1]) return match[1];
-      // Si no es URL, asumimos que es el ID limpio, pero limpiamos slashes por si acaso
-      return input.replace('https://', '').replace('http://', '').replace('archive.org/details/', '').split('/')[0].trim();
+
+      // Caso 2: URL con /download/
+      match = cleanInput.match(/archive\.org\/download\/([^\/]+)/);
+      if (match && match[1]) return match[1];
+
+      // Caso 3: Asumimos que es el ID directo o URL malformada
+      // Limpiamos protocolo y dominio
+      const stripped = cleanInput
+          .replace(/^https?:\/\//, '')
+          .replace(/^www\./, '')
+          .replace('archive.org/details/', '')
+          .replace('archive.org/download/', '');
+      
+      // Tomamos el primer segmento antes de cualquier slash
+      return stripped.split('/')[0];
   };
 
   const addTrustedCollection = (idOrUrl: string) => {
