@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Game, MenuLink, AdsConfig } from '../types';
 import { db } from '../services/firebase';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, runTransaction } from 'firebase/firestore';
+import { checkContentSafety } from '../services/geminiService';
 
 interface GameContextType {
   games: Game[];
@@ -49,6 +50,13 @@ const DEFAULT_ADS_CONFIG: AdsConfig = {
   globalHeadScript: '',
   globalBodyScript: ''
 };
+
+// --- BASIC LOCAL FILTER (First line of defense) ---
+const BAD_WORDS = [
+    'puta', 'puto', 'mierda', 'imbecil', 'estupido', 'idiota', 'verga', 'pene', 
+    'zorra', 'maricon', 'tragapito', 'chupamela', 'culero', 'pendejo', 'malparido',
+    'sex', 'xxx', 'porn', 'viagra', 'casino', 'bitcoin'
+];
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [games, setGames] = useState<Game[]>([]);
@@ -166,21 +174,51 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const addComment = async (gameId: string, author: string, content: string, parentId?: string) => {
+    // 1. LIMPIEZA BÁSICA
+    const cleanContent = content.trim();
+    const cleanAuthor = author.trim();
+
+    if (!cleanContent || !cleanAuthor) throw new Error("Contenido vacío.");
+
+    // 2. FILTRO LOCAL (Instantáneo)
+    const lowerContent = cleanContent.toLowerCase();
+    const lowerAuthor = cleanAuthor.toLowerCase();
+    
+    // Detectar palabras prohibidas
+    const hasBadWords = BAD_WORDS.some(word => lowerContent.includes(word) || lowerAuthor.includes(word));
+    if (hasBadWords) {
+        throw new Error("El comentario contiene lenguaje inapropiado.");
+    }
+
+    // Detectar Spam de enlaces (más de 1 enlace o enlaces sospechosos)
+    const urlPattern = /(https?:\/\/[^\s]+)/g;
+    const urls = cleanContent.match(urlPattern);
+    if (urls && urls.length > 1) { // Permitir máximo 0 o 1 enlace si es relevante
+        throw new Error("No se permite spam de enlaces.");
+    }
+
+    // 3. FILTRO IA (Gemini)
+    // Esto verifica contexto, insultos indirectos, racismo, etc.
+    const moderation = await checkContentSafety(cleanContent, cleanAuthor);
+    if (!moderation.safe) {
+        throw new Error(moderation.reason || "Tu comentario infringe nuestras normas de comunidad.");
+    }
+
+    // 4. GUARDAR EN FIREBASE (Si pasó todas las pruebas)
     const gameRef = doc(db, "games", gameId);
     const commentsCollectionRef = collection(db, "games", gameId, "comments");
-    const newCommentRef = doc(commentsCollectionRef); // Create a new doc reference with Auto ID
+    const newCommentRef = doc(commentsCollectionRef); 
 
     try {
         await runTransaction(db, async (transaction) => {
             const gameDoc = await transaction.get(gameRef);
             if (!gameDoc.exists()) throw new Error("Game not found");
 
-            // 1. Create the comment in subcollection
             const commentData: any = {
                 id: newCommentRef.id,
                 gameId,
-                author,
-                content,
+                author: cleanAuthor,
+                content: cleanContent,
                 createdAt: Date.now()
             };
             
@@ -189,8 +227,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
 
             transaction.set(newCommentRef, commentData);
-
-            // 2. Increment the main comment counter on the game document
             const currentComments = gameDoc.data().comments || 0;
             transaction.update(gameRef, { comments: currentComments + 1 });
         });

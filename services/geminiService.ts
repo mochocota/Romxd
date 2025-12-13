@@ -82,3 +82,52 @@ export const translateKeywords = async (text: string): Promise<string> => {
     return text;
   }
 };
+
+/**
+ * Analyzes text for moderation purposes using AI.
+ * Returns TRUE if content is safe, FALSE if it violates policies (spam, insults, hate speech).
+ */
+export const checkContentSafety = async (text: string, author: string): Promise<{ safe: boolean; reason?: string }> => {
+  if (!text) return { safe: false, reason: "Texto vacío" };
+  if (!API_KEY) return { safe: true }; // Fail open if no API key (or strict: false)
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      config: { 
+        temperature: 0,
+        maxOutputTokens: 50,
+      },
+      contents: `You are a strict content moderator for a video game blog. Analyze the following comment.
+
+      Author Name: "${author}"
+      Comment Body: "${text}"
+
+      Rules:
+      1. Block HATE SPEECH, RACISM, HOMOPHOBIA.
+      2. Block severe INSULTS or HARASSMENT towards others.
+      3. Block SPAM (excessive links, "click here", "buy followers").
+      4. Block SEXUALLY EXPLICIT content.
+      5. Allow constructive criticism, even if negative about a game.
+      6. Allow slang if it's not used as an attack.
+
+      Respond in JSON format: { "safe": boolean, "reason": "short explanation in Spanish if unsafe" }`,
+    });
+
+    const rawText = response.text?.trim() || '';
+    // Clean up markdown code blocks if present (Gemini sometimes wraps JSON in ```json ... ```)
+    const jsonStr = rawText.replace(/```json|```/g, '').trim();
+    
+    const result = JSON.parse(jsonStr);
+    return {
+        safe: result.safe,
+        reason: result.reason || "Contenido inapropiado detectado."
+    };
+
+  } catch (error) {
+    console.error('Moderation check failed:', error);
+    // On API error, we default to SAFE to avoid blocking users due to technical issues,
+    // relying on the local bad-word filter as backup.
+    return { safe: true };
+  }
+};

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { MessageSquare, Send, User, Loader2, Sparkles, ChevronDown, ChevronUp, CornerDownRight, Reply } from 'lucide-react';
+import { MessageSquare, Send, User, Loader2, Sparkles, ChevronDown, ChevronUp, CornerDownRight, Reply, AlertCircle } from 'lucide-react';
 import { useGames } from '../context/GameContext';
 import { db } from '../services/firebase';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
@@ -62,8 +62,6 @@ const CommentItem: React.FC<CommentItemProps> = ({
     const replies = allComments.filter(c => c.parentId === comment.id).sort((a,b) => a.createdAt - b.createdAt);
     
     // Logic for "Vertical Line" visualization
-    // If depth > 0, we don't indent heavily again to avoid "pyramid" effect on mobile
-    // We just keep everything in the same "thread" container
     const isRoot = depth === 0;
 
     return (
@@ -136,7 +134,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
                                     <button 
                                         type="submit" 
                                         disabled={submitting}
-                                        className="bg-orange-600 text-white px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1 hover:bg-orange-500"
+                                        className="bg-orange-600 text-white px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1 hover:bg-orange-500 disabled:opacity-50"
                                     >
                                         {submitting ? <Loader2 size={12} className="animate-spin"/> : <Send size={12}/>} Enviar
                                     </button>
@@ -191,7 +189,7 @@ export const Comments: React.FC<CommentsProps> = ({ gameId }) => {
   const [author, setAuthor] = useState('');
   const [content, setContent] = useState('');
 
-  // Replying State (stores the ID of the comment being replied to)
+  // Replying State
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
 
   // Fetch comments
@@ -218,7 +216,7 @@ export const Comments: React.FC<CommentsProps> = ({ gameId }) => {
     return () => unsubscribe();
   }, [gameId]);
 
-  // Filter only root comments for the main list
+  // Filter only root comments
   const rootComments = useMemo(() => {
       return comments.filter(c => !c.parentId);
   }, [comments]);
@@ -246,9 +244,11 @@ export const Comments: React.FC<CommentsProps> = ({ gameId }) => {
         }
         
         toast.success(parentId ? "Respuesta publicada" : "Comentario publicado");
-    } catch (error) {
+    } catch (error: any) {
         console.error(error);
-        toast.error("Error al publicar");
+        // Show specific AI moderation reason if available
+        const msg = error.message || "Error al publicar";
+        toast.error(msg);
     } finally {
         setSubmitting(false);
     }
@@ -285,6 +285,12 @@ export const Comments: React.FC<CommentsProps> = ({ gameId }) => {
       {/* Accordion Content */}
       {isOpen && (
         <div className="p-6 md:p-8 pt-0 border-t border-gray-100 dark:border-[#444] animate-fadeIn">
+          
+          <div className="my-4 p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs rounded border border-blue-100 dark:border-blue-900/30 flex items-start gap-2">
+            <AlertCircle size={16} className="shrink-0 mt-0.5" />
+            <p><strong>Normas:</strong> Se moderará automáticamente el SPAM, insultos, lenguaje ofensivo o contenido explícito. Mantengamos una comunidad sana.</p>
+          </div>
+
           <div className="grid lg:grid-cols-[1fr_350px] gap-10 mt-6">
               
               {/* List of Comments */}
@@ -349,7 +355,7 @@ export const Comments: React.FC<CommentsProps> = ({ gameId }) => {
                          <button 
                             type="submit" 
                             disabled={submitting}
-                            className="w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white font-bold py-3 rounded-xl text-sm flex items-center justify-center gap-2 transition-all transform active:scale-95 disabled:opacity-70 shadow-lg shadow-orange-500/20"
+                            className="w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white font-bold py-3 rounded-xl text-sm flex items-center justify-center gap-2 transition-all transform active:scale-95 disabled:opacity-50 shadow-lg shadow-orange-500/20"
                          >
                              {submitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
                              Publicar Comentario
