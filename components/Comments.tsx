@@ -63,8 +63,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
 
     const isAdminComment = comment.author === 'RomXD Admin';
     const avatarColor = isAdminComment ? '#ea580c' : stringToColor(comment.author); 
-    const initial = comment.author.charAt(0).toUpperCase();
-
+    
     // Find children
     const replies = allComments.filter(c => c.parentId === comment.id).sort((a,b) => a.createdAt - b.createdAt);
     
@@ -78,11 +77,15 @@ const CommentItem: React.FC<CommentItemProps> = ({
             <div className="flex gap-3">
                 {/* Avatar */}
                 <div 
-                    className={`rounded-full flex items-center justify-center text-white font-bold shrink-0 shadow-sm z-10 select-none
-                        ${isRoot ? 'w-10 h-10 text-sm' : 'w-7 h-7 text-[10px]'}`}
+                    className={`rounded-full flex items-center justify-center text-white shrink-0 shadow-sm z-10 select-none
+                        ${isRoot ? 'w-10 h-10' : 'w-7 h-7'}`}
                     style={{ backgroundColor: avatarColor }}
                 >
-                    {isAdminComment ? <ShieldCheck size={isRoot ? 20 : 14} className="text-white" /> : initial}
+                    {isAdminComment ? (
+                        <ShieldCheck size={isRoot ? 20 : 14} className="text-white" />
+                    ) : (
+                        <User size={isRoot ? 20 : 14} className="text-white" />
+                    )}
                 </div>
 
                 <div className="flex-1 min-w-0">
