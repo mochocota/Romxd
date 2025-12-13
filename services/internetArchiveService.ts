@@ -17,8 +17,8 @@ const BASE_METADATA_URL = 'https://archive.org/metadata';
 
 /**
  * Busca "Items" (Colecciones o Juegos sueltos) en Internet Archive.
- * MEJORA: Búsqueda profunda y tolerante a fallos (Fuzzy Search).
- * MEJORA 2: Soporte para búsqueda dentro de colecciones específicas (Trusted Collections).
+ * MEJORA: Búsqueda flexible (Fuzzy/Wildcard) con operadores OR.
+ * Permite encontrar resultados que contengan "algo" de la búsqueda.
  */
 export const searchArchiveItems = async (query: string, collections: string[] = []): Promise<ArchiveItem[]> => {
   // 1. Limpieza básica
@@ -27,23 +27,35 @@ export const searchArchiveItems = async (query: string, collections: string[] = 
   const terms = cleanQuery.split(/\s+/).filter(t => t.length > 0);
   if (terms.length === 0) return [];
 
-  // 2. Construcción de términos fuzzy
-  const fuzzyQuery = terms.map(t => t.length > 2 ? `${t}~` : t).join(' AND ');
-  const exactQuery = terms.join(' AND ');
+  // 2. Construcción de Query Flexible
+  // Nivel 1: Frase Exacta (Prioridad Máxima ^20)
+  const exactPhrase = `"${cleanQuery}"^20`;
+  
+  // Nivel 2: Contiene TODAS las palabras (Prioridad Alta ^10)
+  const allTerms = terms.length > 1 ? `(${terms.join(' AND ')})^10` : '';
 
-  // 3. Construcción de la Query Base (Título o ID)
-  const textQuery = `(title:(${exactQuery}^10 OR ${fuzzyQuery}) OR identifier:(${fuzzyQuery}))`;
+  // Nivel 3: Contiene ALGUNA palabra (Prioridad Media)
+  const anyTerm = `(${terms.join(' OR ')})`;
 
-  // 4. Lógica de Colecciones
+  // Nivel 4: Búsqueda parcial/comodín (ej: busca "Mario" y encuentra "PaperMario")
+  // Usamos el asterisco al final para autocompletar palabras
+  const wildcardTerms = terms.map(t => `${t}*`).join(' OR ');
+
+  // Combinamos todo en la query de texto
+  // Buscamos tanto en el título como en el identificador (ID)
+  const textQueryParts = [exactPhrase, allTerms, anyTerm, wildcardTerms].filter(Boolean).join(' OR ');
+  const textQuery = `(title:(${textQueryParts}) OR identifier:(${anyTerm} OR ${wildcardTerms}))`;
+
+  // 3. Lógica de Colecciones (Repositorios)
   let collectionQuery = '';
   
   if (collections.length > 0) {
-      // Si hay colecciones de confianza, forzamos la búsqueda DENTRO de ellas.
-      // Sintaxis: AND (collection:(id1 OR id2 OR id3))
+      // Si hay colecciones de confianza, restringimos la búsqueda a ellas.
+      // Buscamos si el item pertenece a la colección (collection:) O si el item ES la colección (identifier:)
       const collectionsOr = collections.map(c => `"${c}"`).join(' OR ');
-      collectionQuery = `AND collection:(${collectionsOr})`;
+      collectionQuery = `AND (collection:(${collectionsOr}) OR identifier:(${collectionsOr}))`;
   } else {
-      // Si no hay colecciones, búsqueda global pero solo software
+      // Si no hay colecciones definidas, buscamos globalmente solo software
       collectionQuery = `AND mediatype:(software)`;
   }
 
@@ -55,7 +67,7 @@ export const searchArchiveItems = async (query: string, collections: string[] = 
     fl: 'identifier,title,downloads,collection',
     sort: 'downloads desc',
     output: 'json',
-    rows: '50', // Aumentamos filas para dar más opciones
+    rows: '50', 
     page: '1'
   });
 
