@@ -7,8 +7,6 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, (process as any).cwd(), '');
 
   return {
-    // Configuración clave: '/' permite que BrowserRouter maneje rutas anidadas correctamente
-    base: '/',
     plugins: [react()],
     build: {
       outDir: 'dist',

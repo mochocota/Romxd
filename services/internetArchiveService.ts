@@ -17,25 +17,34 @@ const BASE_METADATA_URL = 'https://archive.org/metadata';
 
 /**
  * Busca "Items" (Colecciones o Juegos sueltos) en Internet Archive.
- * CAMBIO: Se ha eliminado el filtro estricto de región en el título del ITEM.
- * Esto corrige el problema donde juegos como "Pokemon X" no aparecían porque el contenedor
- * no tenía "Es" o "Europe" en su título principal, aunque sus archivos internos sí.
+ * MEJORA: Búsqueda profunda y tolerante a fallos (Fuzzy Search).
+ * Permite encontrar "Castlevania Portrain" (typo) como "Castlevania Portrait".
  */
 export const searchArchiveItems = async (query: string): Promise<ArchiveItem[]> => {
-  // 1. Normalizar la búsqueda: quitar acentos y caracteres especiales (Pokémon -> Pokemon)
-  const cleanQuery = query.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  // 1. Limpieza básica: Quitamos acentos y caracteres raros, dejamos espacios.
+  const cleanQuery = query.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9\s]/g, " ");
+  
+  const terms = cleanQuery.split(/\s+/).filter(t => t.length > 0);
+  if (terms.length === 0) return [];
 
-  // 2. Query General: Buscamos por título o identificador.
-  // Nota: Ya no forzamos "AND (Europe OR Es...)" aquí para no ocultar resultados válidos.
-  // La priorización de idioma se hace en el siguiente paso (getArchiveFiles).
-  const q = `(title:(${cleanQuery}) OR identifier:(${cleanQuery})) AND mediatype:(software)`;
+  // 2. Construcción de términos fuzzy
+  // Añadimos '~' a las palabras significativas (>2 letras) para permitir errores tipográficos (Distance 1-2)
+  // Ejemplo: "Portrain" -> "Portrain~" machea con "Portrait"
+  const fuzzyQuery = terms.map(t => t.length > 2 ? `${t}~` : t).join(' AND ');
+  
+  // 3. Query exacta para dar prioridad (Boost ^10) si el usuario lo escribió bien
+  const exactQuery = terms.join(' AND ');
+
+  // 4. Query compuesta
+  // Buscamos en 'title' (con boost exacto y fallback fuzzy) y en 'identifier'
+  const q = `(title:(${exactQuery}^10 OR ${fuzzyQuery}) OR identifier:(${fuzzyQuery})) AND mediatype:(software)`;
   
   const params = new URLSearchParams({
     q: q,
     fl: 'identifier,title,downloads,collection', // Campos a devolver
     sort: 'downloads desc', // Ordenar por popularidad
     output: 'json',
-    rows: '30',
+    rows: '35', // Un poco más de resultados para deep search
     page: '1'
   });
 
