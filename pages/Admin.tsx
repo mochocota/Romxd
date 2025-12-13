@@ -9,11 +9,10 @@ import {
     Bold, Italic, List, Heading, Link as LinkIcon, Quote, Image as ImageIcon,
     ArrowLeft, Search, Tags, X, Upload, Youtube, Layers, Menu as MenuIcon,
     RotateCcw, Wand2, Loader2, Download, Database, Megaphone, Code, Globe, 
-    MessageSquare, LogOut, AlertTriangle, Copy, Check, Shield, Library, Archive, Globe2
+    MessageSquare, LogOut, AlertTriangle, Copy, Check, Shield
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { searchIGDBGames, getIGDBGameDetails } from '../services/igdbService';
-import { searchArchiveItems, getArchiveFiles, generateDirectLink, ArchiveItem, ArchiveFile } from '../services/internetArchiveService';
 
 const INITIAL_FORM_STATE: Game = {
   id: '',
@@ -58,11 +57,11 @@ const slugify = (text: string) => {
 
 export const Admin: React.FC = () => {
   const { 
-      games, tags, platforms, menuLinks, adsConfig, trustedCollections,
+      games, tags, platforms, menuLinks, adsConfig,
       addGame, updateGame, deleteGame, 
       addTag, deleteTag, addPlatform, deletePlatform,
       addMenuLink, updateMenuLink, deleteMenuLink,
-      updateAdsConfig, addTrustedCollection, deleteTrustedCollection
+      updateAdsConfig
   } = useGames();
   
   const { logout, user } = useAuth();
@@ -84,7 +83,7 @@ export const Admin: React.FC = () => {
   const [copiedRules, setCopiedRules] = useState(false);
   
   // Manager Local State
-  const [managerTab, setManagerTab] = useState<'platforms' | 'tags' | 'menu' | 'ads' | 'repos'>('platforms');
+  const [managerTab, setManagerTab] = useState<'platforms' | 'tags' | 'menu' | 'ads'>('platforms');
   const [newItemName, setNewItemName] = useState('');
   
   // Menu specific state
@@ -106,15 +105,6 @@ export const Admin: React.FC = () => {
   const [igdbQuery, setIgdbQuery] = useState('');
   const [igdbResults, setIgdbResults] = useState<any[]>([]);
   const [isIgdbLoading, setIsIgdbLoading] = useState(false);
-
-  // Internet Archive State
-  const [showArchiveModal, setShowArchiveModal] = useState(false);
-  const [archiveQuery, setArchiveQuery] = useState('');
-  const [searchGlobal, setSearchGlobal] = useState(false); // NEW STATE
-  const [archiveItems, setArchiveItems] = useState<ArchiveItem[]>([]);
-  const [archiveFiles, setArchiveFiles] = useState<ArchiveFile[]>([]);
-  const [selectedArchiveItem, setSelectedArchiveItem] = useState<ArchiveItem | null>(null);
-  const [isArchiveLoading, setIsArchiveLoading] = useState(false);
 
   // UPDATED RULES TO ALLOW PUBLIC VOTING/DOWNLOADS/COMMENTS
   const rulesSnippet = `rules_version = '2';
@@ -410,71 +400,6 @@ service cloud.firestore {
       }
   };
 
-  // --- Internet Archive Handlers ---
-  const handleOpenArchiveModal = () => {
-      // Use title for initial search, but allow user to change it
-      setArchiveQuery(formData.title || '');
-      setArchiveItems([]);
-      setArchiveFiles([]);
-      setSelectedArchiveItem(null);
-      setSearchGlobal(false); // Reset global search toggle
-      setShowArchiveModal(true);
-  };
-
-  const handleSearchArchive = async (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!archiveQuery.trim()) return;
-      setIsArchiveLoading(true);
-      setArchiveItems([]);
-      setSelectedArchiveItem(null);
-      try {
-          // Pass the global search flag
-          const items = await searchArchiveItems(archiveQuery, trustedCollections, searchGlobal);
-          setArchiveItems(items);
-          if (items.length === 0) {
-              if (trustedCollections.length > 0 && !searchGlobal) {
-                  toast.info('No hay resultados en tus repositorios. Prueba activando la búsqueda global.');
-              } else {
-                  toast.info('No se encontraron items en Internet Archive.');
-              }
-          }
-      } catch (error) {
-          toast.error('Error buscando en Internet Archive');
-      } finally {
-          setIsArchiveLoading(false);
-      }
-  };
-
-  const handleSelectArchiveItem = async (item: ArchiveItem) => {
-      setIsArchiveLoading(true);
-      setSelectedArchiveItem(item);
-      try {
-          const files = await getArchiveFiles(item.identifier);
-          setArchiveFiles(files);
-          if (files.length === 0) toast.warning('Este item no contiene archivos compatibles (ISO/ROM/ZIP).');
-      } catch (error) {
-          toast.error('Error cargando lista de archivos');
-          setSelectedArchiveItem(null);
-      } finally {
-          setIsArchiveLoading(false);
-      }
-  };
-
-  const handleSelectArchiveFile = (file: ArchiveFile) => {
-      if (!selectedArchiveItem) return;
-      const directLink = generateDirectLink(selectedArchiveItem.identifier, file.name);
-      
-      setFormData(prev => ({
-          ...prev,
-          downloadUrl: directLink,
-          // Try to guess size if available
-          downloadSize: file.size ? `${(parseInt(file.size) / 1024 / 1024).toFixed(2)} MB` : prev.downloadSize
-      }));
-
-      setShowArchiveModal(false);
-      toast.success('Enlace directo generado correctamente');
-  };
-
   const handleAddItem = async (e: React.FormEvent) => {
       e.preventDefault();
       
@@ -501,12 +426,7 @@ service cloud.firestore {
       }
 
       if (newItemName.trim()) {
-          if (managerTab === 'repos') {
-              // Extraer ID y añadir a Trusted Collections
-              addTrustedCollection(newItemName);
-              toast.success(`Repositorio añadido`);
-          }
-          else if (managerTab === 'platforms') {
+          if (managerTab === 'platforms') {
               addPlatform(newItemName);
               toast.success(`Plataforma "${newItemName}" añadida`);
           }
@@ -544,7 +464,6 @@ service cloud.firestore {
       const confirmed = await dialog.confirm(`¿Borrar "${item}"?`, 'Esto lo eliminará de la lista.');
       if (confirmed) {
           if (managerTab === 'platforms') deletePlatform(item);
-          else if (managerTab === 'repos') deleteTrustedCollection(item);
           else deleteTag(item);
           toast.info('Elemento eliminado');
       }
@@ -583,7 +502,6 @@ service cloud.firestore {
     let listItems: string[] = [];
     if (managerTab === 'platforms') listItems = platforms;
     if (managerTab === 'tags') listItems = tags;
-    if (managerTab === 'repos') listItems = trustedCollections;
 
     return (
         <div className="min-h-screen pb-12 bg-gray-100 dark:bg-[#333] transition-colors duration-300 w-full">
@@ -600,7 +518,6 @@ service cloud.firestore {
                         <button onClick={() => setManagerTab('platforms')} className={`pb-2 px-1 font-bold ${managerTab === 'platforms' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-zinc-500'}`}>Categorías</button>
                         <button onClick={() => setManagerTab('tags')} className={`pb-2 px-1 font-bold ${managerTab === 'tags' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-zinc-500'}`}>Etiquetas</button>
                         <button onClick={() => setManagerTab('menu')} className={`pb-2 px-1 font-bold ${managerTab === 'menu' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-zinc-500'}`}>Menú</button>
-                        <button onClick={() => setManagerTab('repos')} className={`pb-2 px-1 font-bold ${managerTab === 'repos' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-zinc-500'}`}>Repositorios</button>
                         <button onClick={() => setManagerTab('ads')} className={`pb-2 px-1 font-bold ${managerTab === 'ads' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-zinc-500'}`}>Publicidad</button>
                     </div>
 
@@ -649,23 +566,13 @@ service cloud.firestore {
                         </>
                     ) : (
                         <>
-                           {/* Pestaña Genérica (Tags, Platforms, Repos) */}
-                            {managerTab === 'repos' && (
-                                <div className="mb-4 p-4 bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-900/30 rounded text-sm text-orange-800 dark:text-orange-200">
-                                    <h5 className="font-bold flex items-center gap-2 mb-1"><Archive size={16}/> Repositorios de Confianza</h5>
-                                    <p className="opacity-90">
-                                        Añade URLs de colecciones de Internet Archive (ej: <code>archive.org/details/Redump-Sony-PlayStation-2-USA</code>). 
-                                        Cuando busques juegos, el sistema priorizará estos repositorios para dar resultados más precisos.
-                                    </p>
-                                </div>
-                            )}
-
+                           {/* Pestaña Genérica (Tags, Platforms) */}
                             <form onSubmit={handleAddItem} className="flex flex-col sm:flex-row gap-4 mb-8">
                                 <input 
                                     type="text" 
                                     value={newItemName} 
                                     onChange={(e) => setNewItemName(e.target.value)} 
-                                    placeholder={managerTab === 'platforms' ? "Ej: PSP..." : managerTab === 'repos' ? "URL de Internet Archive..." : "Ej: Acción..."} 
+                                    placeholder={managerTab === 'platforms' ? "Ej: PSP..." : "Ej: Acción..."} 
                                     className="flex-1 bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] px-4 py-2 rounded dark:text-white" 
                                 />
                                 <button type="submit" disabled={!newItemName.trim()} className="bg-orange-600 text-white px-6 py-2 rounded font-bold flex items-center gap-2"><Plus size={18} /> Agregar</button>
@@ -673,7 +580,7 @@ service cloud.firestore {
                             <div className="flex flex-wrap gap-3">
                                 {listItems.length > 0 ? listItems.map(item => (
                                     <div key={item} className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-[#1a1a1a] border dark:border-[#333] rounded dark:text-zinc-200">
-                                        <span className={managerTab === 'repos' ? 'font-mono text-xs' : ''}>{item}</span>
+                                        <span>{item}</span>
                                         <button onClick={() => handleDeleteItem(item)} className="text-zinc-400 hover:text-red-500"><X size={14} /></button>
                                     </div>
                                 )) : (
@@ -693,146 +600,6 @@ service cloud.firestore {
       return (
         <div className="min-h-screen pb-12 bg-gray-100 dark:bg-[#333] transition-colors duration-300 w-full overflow-x-hidden relative">
             
-            {/* --- INTERNET ARCHIVE MODAL --- */}
-            {showArchiveModal && (
-                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn">
-                    <div className="bg-white dark:bg-[#222] w-full max-w-3xl rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-                        
-                        {/* Modal Header */}
-                        <div className="p-4 border-b border-gray-200 dark:border-[#444] flex items-center justify-between bg-zinc-100 dark:bg-[#1f1f1f]">
-                            <h3 className="font-bold text-lg dark:text-white flex items-center gap-2">
-                                <Library className="text-orange-600" size={22} /> 
-                                {selectedArchiveItem ? 'Selecciona el Archivo' : 'Buscar en Internet Archive'}
-                            </h3>
-                            <button onClick={() => setShowArchiveModal(false)} className="p-2 hover:bg-gray-200 dark:hover:bg-[#333] rounded-full transition-colors">
-                                <X size={20} className="text-zinc-500" />
-                            </button>
-                        </div>
-
-                        {/* Search Bar (Only visible if not selecting a file) */}
-                        {!selectedArchiveItem && (
-                            <div className="p-4 bg-white dark:bg-[#222] border-b border-gray-200 dark:border-[#444] space-y-4">
-                                <form onSubmit={handleSearchArchive} className="flex gap-2">
-                                    <input 
-                                        type="text" 
-                                        value={archiveQuery} 
-                                        onChange={(e) => setArchiveQuery(e.target.value)} 
-                                        placeholder={trustedCollections.length > 0 ? "Buscando en tus repositorios..." : "Nombre del juego o colección..."} 
-                                        className="flex-1 bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#444] px-4 py-2 rounded dark:text-white focus:outline-none focus:border-orange-500" 
-                                        autoFocus 
-                                    />
-                                    <button 
-                                        type="submit" 
-                                        disabled={isArchiveLoading} 
-                                        className="bg-orange-600 hover:bg-orange-500 text-white px-6 py-2 rounded font-bold flex items-center gap-2 transition-colors"
-                                    >
-                                        {isArchiveLoading ? <Loader2 className="animate-spin" size={18} /> : <Search size={18} />} 
-                                        Buscar
-                                    </button>
-                                </form>
-                                
-                                <div className="flex items-center justify-between">
-                                    {trustedCollections.length > 0 && !searchGlobal ? (
-                                        <div className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1 font-medium">
-                                            <Archive size={12} /> Búsqueda restringida a {trustedCollections.length} repositorios.
-                                        </div>
-                                    ) : (
-                                        <div className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1 font-medium">
-                                            <Globe2 size={12} /> Búsqueda Global activada.
-                                        </div>
-                                    )}
-
-                                    {/* GLOBAL SEARCH TOGGLE */}
-                                    <label className="flex items-center gap-2 text-xs font-bold text-zinc-600 dark:text-zinc-300 cursor-pointer select-none">
-                                        <input 
-                                            type="checkbox" 
-                                            checked={searchGlobal} 
-                                            onChange={(e) => setSearchGlobal(e.target.checked)}
-                                            className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
-                                        />
-                                        Buscar en todo Internet Archive
-                                    </label>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Back button within modal */}
-                        {selectedArchiveItem && (
-                            <div className="p-2 bg-orange-50 dark:bg-orange-900/10 border-b border-orange-100 dark:border-orange-900/20">
-                                <button 
-                                    onClick={() => { setSelectedArchiveItem(null); setArchiveFiles([]); }}
-                                    className="flex items-center gap-2 text-sm font-bold text-orange-700 dark:text-orange-400 px-2 py-1 hover:underline"
-                                >
-                                    <ArrowLeft size={16} /> Volver a resultados
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Results List */}
-                        <div className="flex-1 overflow-y-auto p-0 bg-gray-50 dark:bg-[#1a1a1a]">
-                            {isArchiveLoading ? (
-                                <div className="flex flex-col items-center justify-center py-12 text-zinc-400">
-                                    <Loader2 className="animate-spin mb-2" size={32} />
-                                    <span>Consultando la biblioteca infinita...</span>
-                                </div>
-                            ) : selectedArchiveItem ? (
-                                // FILE LIST VIEW
-                                <div className="divide-y divide-gray-200 dark:divide-[#333]">
-                                    {archiveFiles.length > 0 ? (
-                                        archiveFiles.map((file, idx) => (
-                                            <button 
-                                                key={idx} 
-                                                onClick={() => handleSelectArchiveFile(file)}
-                                                className="w-full text-left p-3 hover:bg-orange-100 dark:hover:bg-orange-900/20 transition-colors flex items-center gap-3 group"
-                                            >
-                                                <div className="bg-white dark:bg-[#222] p-2 rounded border dark:border-[#444] text-xs font-mono font-bold text-zinc-500 group-hover:text-orange-600">
-                                                    {file.name.split('.').pop()?.toUpperCase()}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="font-medium text-sm text-zinc-800 dark:text-zinc-200 truncate group-hover:text-orange-700 dark:group-hover:text-orange-400">
-                                                        {file.name}
-                                                    </div>
-                                                    {file.size && <div className="text-xs text-zinc-400">{(parseInt(file.size) / 1024 / 1024).toFixed(2)} MB</div>}
-                                                </div>
-                                                <Download size={18} className="text-zinc-300 group-hover:text-orange-500" />
-                                            </button>
-                                        ))
-                                    ) : (
-                                        <div className="p-8 text-center text-zinc-500">No se encontraron archivos de juego en este item.</div>
-                                    )}
-                                </div>
-                            ) : (
-                                // ITEM LIST VIEW
-                                <div className="divide-y divide-gray-200 dark:divide-[#333]">
-                                    {archiveItems.length > 0 ? (
-                                        archiveItems.map((item) => (
-                                            <button 
-                                                key={item.identifier} 
-                                                onClick={() => handleSelectArchiveItem(item)} 
-                                                className="w-full text-left p-4 hover:bg-white dark:hover:bg-[#222] transition-colors group"
-                                            >
-                                                <div className="font-bold text-zinc-800 dark:text-white text-base group-hover:text-orange-600 mb-1">
-                                                    {item.title}
-                                                </div>
-                                                <div className="flex items-center gap-4 text-xs text-zinc-500">
-                                                    <span className="font-mono bg-gray-200 dark:bg-[#333] px-1.5 py-0.5 rounded">{item.identifier}</span>
-                                                    {item.downloads && <span>Downloads: {item.downloads.toLocaleString()}</span>}
-                                                    {item.collection && <span className="truncate max-w-[200px] opacity-75">Col: {item.collection[0]}</span>}
-                                                </div>
-                                            </button>
-                                        ))
-                                    ) : (
-                                        <div className="p-12 text-center text-zinc-500">
-                                            {archiveQuery ? 'No se encontraron resultados.' : 'Busca un juego o colección para empezar.'}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {/* ... IGDB Modal and Header ... */}
             {showIgdbModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn">
@@ -935,9 +702,6 @@ service cloud.firestore {
                                 <div>
                                     <label className="text-xs uppercase font-bold text-zinc-500 flex justify-between">
                                         URL Descarga 
-                                        <button type="button" onClick={handleOpenArchiveModal} className="text-[10px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded flex items-center gap-1 hover:bg-orange-200">
-                                            <Library size={10} /> Buscar en IA
-                                        </button>
                                     </label>
                                     <input type="text" name="downloadUrl" value={formData.downloadUrl} onChange={handleChange} className="w-full bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] p-3 rounded dark:text-white" />
                                 </div>

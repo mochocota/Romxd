@@ -11,7 +11,6 @@ interface GameContextType {
   platforms: string[];
   menuLinks: MenuLink[];
   adsConfig: AdsConfig;
-  trustedCollections: string[]; // NEW: Lista de IDs de Internet Archive
   addGame: (game: Game) => Promise<void>;
   updateGame: (game: Game) => Promise<void>;
   deleteGame: (id: string) => Promise<void>;
@@ -26,8 +25,6 @@ interface GameContextType {
   updateMenuLink: (link: MenuLink) => void;
   deleteMenuLink: (id: string) => void;
   updateAdsConfig: (config: AdsConfig) => void;
-  addTrustedCollection: (idOrUrl: string) => void; // NEW
-  deleteTrustedCollection: (id: string) => void; // NEW
   loading: boolean;
 }
 
@@ -54,8 +51,6 @@ const DEFAULT_ADS_CONFIG: AdsConfig = {
   globalHeadScript: '',
   globalBodyScript: ''
 };
-
-const DEFAULT_COLLECTIONS: string[] = []; // Empezamos vacío para que el usuario añada los suyos
 
 // --- BASIC LOCAL FILTER (First line of defense) ---
 const BAD_WORDS = [
@@ -104,17 +99,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return saved ? JSON.parse(saved) : DEFAULT_ADS_CONFIG;
   });
 
-  const [trustedCollections, setTrustedCollections] = useState<string[]>(() => {
-      const saved = localStorage.getItem('romxd_collections');
-      return saved ? JSON.parse(saved) : DEFAULT_COLLECTIONS;
-  });
-
   // Persist Local Settings
   useEffect(() => localStorage.setItem('romxd_tags', JSON.stringify(tags)), [tags]);
   useEffect(() => localStorage.setItem('romxd_platforms', JSON.stringify(platforms)), [platforms]);
   useEffect(() => localStorage.setItem('romxd_menu_links', JSON.stringify(menuLinks)), [menuLinks]);
   useEffect(() => localStorage.setItem('romxd_ads_config', JSON.stringify(adsConfig)), [adsConfig]);
-  useEffect(() => localStorage.setItem('romxd_collections', JSON.stringify(trustedCollections)), [trustedCollections]);
 
   // --- FIRESTORE ACTIONS ---
 
@@ -271,31 +260,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const updateAdsConfig = (c: AdsConfig) => setAdsConfig(c);
 
-  // Helper para extraer ID de URL o usar el ID directo
-  const extractArchiveId = (input: string) => {
-      const match = input.match(/archive\.org\/details\/([^\/]+)/);
-      if (match && match[1]) return match[1];
-      // Si no es URL, asumimos que es el ID limpio, pero limpiamos slashes por si acaso
-      return input.replace('https://', '').replace('http://', '').replace('archive.org/details/', '').split('/')[0].trim();
-  };
-
-  const addTrustedCollection = (idOrUrl: string) => {
-      const id = extractArchiveId(idOrUrl);
-      if (!id) return;
-      setTrustedCollections(prev => prev.includes(id) ? prev : [...prev, id]);
-  };
-
-  const deleteTrustedCollection = (id: string) => setTrustedCollections(prev => prev.filter(c => c !== id));
-
   return (
     <GameContext.Provider value={{ 
-      games, tags, platforms, menuLinks, adsConfig, trustedCollections, loading,
+      games, tags, platforms, menuLinks, adsConfig, loading,
       addGame, updateGame, deleteGame, rateGame, incrementDownloads, addComment,
       addTag, deleteTag,
       addPlatform, deletePlatform,
       addMenuLink, updateMenuLink, deleteMenuLink,
-      updateAdsConfig,
-      addTrustedCollection, deleteTrustedCollection
+      updateAdsConfig
     }}>
       {children}
     </GameContext.Provider>
