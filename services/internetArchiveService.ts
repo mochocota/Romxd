@@ -17,18 +17,24 @@ const BASE_METADATA_URL = 'https://archive.org/metadata';
 
 /**
  * Busca "Items" (Colecciones o Juegos sueltos) en Internet Archive.
- * Filtra por software para evitar libros o películas.
+ * AHORA FILTRADO: Prioriza Europa, España, Español, Multi-lenguaje y Parches.
  */
 export const searchArchiveItems = async (query: string): Promise<ArchiveItem[]> => {
-  // Construimos una query para buscar en título o identificador, solo software/juegos
-  const q = `(title:(${query}) OR identifier:(${query})) AND mediatype:(software)`;
+  // Palabras clave para el enfoque regional/idioma
+  const regionFilter = '(Europe OR Spain OR Spanish OR Español OR Multi OR (Es) OR Traducido OR Castellano OR Latino OR Patch OR Patcher)';
+  
+  // Construimos la query compuesta:
+  // 1. El término del usuario en Título o ID.
+  // 2. AND: Que contenga alguno de los términos regionales (Europe, Spanish, etc).
+  // 3. AND: Que sea software.
+  const q = `((title:(${query}) OR identifier:(${query})) AND (title:(${regionFilter}) OR identifier:(${regionFilter}))) AND mediatype:(software)`;
   
   const params = new URLSearchParams({
     q: q,
     fl: 'identifier,title,downloads,collection', // Campos a devolver
     sort: 'downloads desc', // Ordenar por popularidad
     output: 'json',
-    rows: '20',
+    rows: '30', // Aumentamos resultados para tener variedad de versiones
     page: '1'
   });
 
@@ -44,6 +50,7 @@ export const searchArchiveItems = async (query: string): Promise<ArchiveItem[]> 
 
 /**
  * Obtiene la lista de archivos dentro de un Item específico.
+ * ORDENADO: Los archivos con nombres "Spanish/Europe" aparecen primero.
  */
 export const getArchiveFiles = async (identifier: string): Promise<ArchiveFile[]> => {
   try {
@@ -53,13 +60,28 @@ export const getArchiveFiles = async (identifier: string): Promise<ArchiveFile[]
     if (!data.files || !Array.isArray(data.files)) return [];
 
     // Filtramos para devolver solo archivos relevantes (ROMs, ISOs, ZIPs, 7z, RAR)
-    // Ignoramos XML, JPG, TXT, etc.
     const validExtensions = ['.iso', '.cso', '.rom', '.bin', '.cue', '.7z', '.zip', '.rar', '.chd', '.rvz', '.wbfs', '.nds', '.gba', '.cia'];
     
-    return data.files.filter((file: any) => {
+    const validFiles = data.files.filter((file: any) => {
         const name = file.name.toLowerCase();
         return validExtensions.some(ext => name.endsWith(ext));
     }) as ArchiveFile[];
+
+    // Algoritmo de ordenamiento: Priorizar Europa/Español al principio de la lista
+    const priorityTerms = ['europe', 'spain', 'spanish', 'español', 'multi', '(es)', 'traducido', 'castellano'];
+    
+    validFiles.sort((a, b) => {
+        const nameA = a.name.toLowerCase();
+        const nameB = b.name.toLowerCase();
+        
+        const scoreA = priorityTerms.some(term => nameA.includes(term)) ? 1 : 0;
+        const scoreB = priorityTerms.some(term => nameB.includes(term)) ? 1 : 0;
+        
+        // Si B tiene prioridad y A no, B va primero.
+        return scoreB - scoreA;
+    });
+
+    return validFiles;
 
   } catch (error) {
     console.error('Error fetching Archive files:', error);
