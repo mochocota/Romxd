@@ -17,6 +17,13 @@ export const AdUnit: React.FC<AdUnitProps> = ({ adCode, className, label }) => {
 
         // Clear previous content
         containerRef.current.innerHTML = '';
+        
+        // --- SAFETY FILTER ---
+        // Block Giscus if it was accidentally pasted into an ad block
+        if (adCode.toLowerCase().includes('giscus')) {
+            console.warn('Blocked Giscus script in AdUnit.');
+            return;
+        }
 
         // Create a range to execute fragments
         try {
