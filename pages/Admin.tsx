@@ -9,7 +9,7 @@ import {
     Bold, Italic, List, Heading, Link as LinkIcon, Quote, Image as ImageIcon,
     ArrowLeft, Search, Tags, X, Upload, Youtube, Layers, Menu as MenuIcon,
     RotateCcw, Wand2, Loader2, Download, Database, Megaphone, Code, Globe, 
-    MessageSquare, LogOut, AlertTriangle, Copy, Check, Shield
+    MessageSquare, LogOut, AlertTriangle, Copy, Check, Shield, ExternalLink
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { searchIGDBGames, getIGDBGameDetails } from '../services/igdbService';
@@ -701,9 +701,17 @@ service cloud.firestore {
                                 <div><label className="text-xs uppercase font-bold text-zinc-500">Tamaño</label><input type="text" name="downloadSize" value={formData.downloadSize} onChange={handleChange} className="w-full bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] p-3 rounded dark:text-white" /></div>
                                 <div>
                                     <label className="text-xs uppercase font-bold text-zinc-500 flex justify-between">
-                                        URL Descarga 
+                                        URL Descarga (Directa)
                                     </label>
                                     <input type="text" name="downloadUrl" value={formData.downloadUrl} onChange={handleChange} className="w-full bg-gray-50 dark:bg-[#1a1a1a] border dark:border-[#333] p-3 rounded dark:text-white" />
+                                    <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/10 rounded border border-blue-100 dark:border-blue-900/20 text-[11px] text-zinc-500 dark:text-zinc-400">
+                                        <p className="font-bold text-orange-600 dark:text-orange-400 mb-1 flex items-center gap-1"><ExternalLink size={12}/> Para descarga automática:</p>
+                                        <ul className="list-disc pl-4 space-y-1">
+                                            <li>Usa <b>Myrient</b> o <b>Archive.org</b> para obtener enlaces directos y permanentes.</li>
+                                            <li>Haz <b>Click Derecho</b> en el archivo (.zip, .iso) y elige <b>"Copiar dirección de enlace"</b>.</li>
+                                            <li>Pega ese enlace aquí.</li>
+                                        </ul>
+                                    </div>
                                 </div>
                             </div>
                         )}
